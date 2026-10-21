@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 76" fill="none">
+  <rect width="250" height="76" rx="14" fill="#0A192F" stroke="#EA580C" stroke-width="1.5"/>
+  <rect x="2" y="2" width="246" height="72" rx="12" fill="url(#bg_oferteo)"/>
+  <defs>
+    <linearGradient id="bg_oferteo" x1="0" y1="0" x2="250" y2="76" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18181B"/>
+      <stop offset="1" stop-color="#27272A"/>
+    </linearGradient>
+  </defs>
+  <!-- Oferteo Emblem -->
+  <g transform="translate(14, 16)">
+    <rect width="44" height="44" rx="10" fill="#EA580C"/>
+    <!-- Trophy / Medal symbol -->
+    <path d="M14 13h16v6a8 8 0 01-16 0v-6z" fill="#FFFFFF"/>
+    <path d="M11 15h3v4h-3a2 2 0 01-2-2v0a2 2 0 012-2zM33 15h-3v4h3a2 2 0 002-2v0a2 2 0 00-2-2z" fill="#FFFFFF" fill-opacity="0.8"/>
+    <path d="M22 25v4m-5 4h10" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  <!-- Text -->
+  <text x="68" y="26" fill="#F97316" font-family="system-ui, -apple-system, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.5">OFERTEO • NAJLEPSI 2024</text>
+  <text x="68" y="47" fill="#FFFFFF" font-family="system-ui, -apple-system, sans-serif" font-size="19" font-weight="800">5.0</text>
+  <!-- 5 Stars -->
+  <g transform="translate(104, 34) scale(0.9)">
+    <path d="M9 1L11.5 6.5L17.5 7.3L13.1 11.4L14.2 17.4L9 14.5L3.8 17.4L4.9 11.4L0.5 7.3L6.5 6.5L9 1Z" fill="#F97316"/>
+    <path d="M28 1L30.5 6.5L36.5 7.3L32.1 11.4L33.2 17.4L28 14.5L22.8 17.4L23.9 11.4L19.5 7.3L25.5 6.5L28 1Z" fill="#F97316"/>
+    <path d="M47 1L49.5 6.5L55.5 7.3L51.1 11.4L52.2 17.4L47 14.5L41.8 17.4L42.9 11.4L38.5 7.3L44.5 6.5L47 1Z" fill="#F97316"/>
+    <path d="M66 1L68.5 6.5L74.5 7.3L70.1 11.4L71.2 17.4L66 14.5L60.8 17.4L61.9 11.4L57.5 7.3L63.5 6.5L66 1Z" fill="#F97316"/>
+    <path d="M85 1L87.5 6.5L93.5 7.3L89.1 11.4L90.2 17.4L85 14.5L79.8 17.4L80.9 11.4L76.5 7.3L82.5 6.5L85 1Z" fill="#F97316"/>
+  </g>
+  <text x="68" y="63" fill="#A1A1AA" font-family="system-ui, -apple-system, sans-serif" font-size="11" font-weight="600">93 opinie (100% 5 gwiazdek)</text>
+</svg>
