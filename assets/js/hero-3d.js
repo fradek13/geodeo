@@ -33,8 +33,8 @@
       0.1,
       600
     );
-    const cameraTarget = new THREE.Vector3(4.5, 2.5, -6.5);
-    camera.position.set(2.0, 18.5, 41.0);
+    const cameraTarget = new THREE.Vector3(16.0, 14.5, -7.0);
+    camera.position.set(12.0, 15.5, 54.0);
     camera.lookAt(cameraTarget);
 
     // Smartfony (< 768px): tryb STATYCZNY – jedna ostra klatka bez pętli animacji (brak lagów)
@@ -109,8 +109,8 @@
       const survKnoll = Math.exp(-(distSurv * distSurv) / 30.0) * 1.2;
 
       // 7. Terasa górska o łagodnym spadku pod instalację farmy PV (dwa rzędy po 3 stoły)
-      const pvDist = Math.sqrt((x - 3.5) * (x - 3.5) + (z - 3.0) * (z - 3.0));
-      const pvTerraceFactor = Math.max(0.0, 1.0 - pvDist / 17.0);
+      const pvDist = Math.sqrt((x - 0.0) * (x - 0.0) + (z - 4.5) * (z - 4.5));
+      const pvTerraceFactor = Math.max(0.0, 1.0 - pvDist / 16.0);
 
       // 8. Płynne wygaszenie krawędzi siatki ku granicom przestrzeni
       const distCenter = Math.sqrt(x * x + z * z);
@@ -306,8 +306,8 @@
       // Część podziemna (kafarowana w głąb gruntu) i naziemna nóg
       const pileEmbed = -0.45;
 
-      // 1. CZTERY RAMY PODPOROWE (PRZEDNIE I TYLNE NOGI + GŁOWICE + STOPY + ZASTRZAŁY)
-      const numSupports = 4;
+      // 1. CZTERY LUB TRZY RAMY PODPOROWE (W ZALEŻNOŚCI OD DŁUGOŚCI STOŁU)
+      const numSupports = Math.max(3, Math.min(4, Math.round(cols * 0.75)));
       const supportSpanX = totalModulesWidth * 0.82;
 
       const legProfileW = 0.11;
@@ -479,18 +479,19 @@
     }
 
     // Rozmieszczenie stołów PV w układzie rzeczywistej farmy fotowoltaicznej:
-    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów), równoległe rzędy z odstępem międzyrzędowym,
-    // usytuowane w dolinie tak, by nie zasłaniały wieży ani geodety wykonującego pomiary.
+    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów), czyste równoległe rzędy z bezpiecznymi odstępami technologicznymi:
+    // Rząd 1 (bliżej przodu): x: [-6.0, 0.0, 6.0], z: [8.0]
+    // Rząd 2 (z tyłu): x: [-6.0, 0.0, 6.0], z: [1.0]
     const pvTablesList = [];
     const pvLayout = [
-      // Rząd 1 (frontowy / południowy w dolinie — 3 stoły w równej linii)
-      { x: -1.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
-      { x: 3.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
-      { x: 8.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
-      // Rząd 2 (tylny — 3 stoły równolegle z zachowaniem odstępu serwisowego)
-      { x: -1.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 },
-      { x: 3.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 },
-      { x: 8.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 }
+      // Rząd 1 (bliżej przodu, z = 8.0)
+      { x: -6.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
+      { x:  0.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
+      { x:  6.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
+      // Rząd 2 (z tyłu, z = 1.0)
+      { x: -6.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 },
+      { x:  0.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 },
+      { x:  6.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 }
     ];
 
     pvLayout.forEach((cfg) => {
@@ -1242,8 +1243,8 @@
       camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
 
       // Oddalona pozycja kamery obejmująca w całości wieżę i stanowisko geodety na grzbiecie połoniny
-      camera.position.set(10.0, 20.0, 50.0);
-      cameraTarget.set(10.0, 19.0, -10.5);
+      camera.position.set(12.0, 16.0, 58.0);
+      cameraTarget.set(15.0, 15.0, -7.0);
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
 
@@ -1260,8 +1261,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       renderer.setSize(cachedWidth, cachedHeight);
       camera.fov = 48;
-      camera.position.set(2.0, 18.5, 41.0);
-      cameraTarget.set(4.5, 2.5, -6.5);
+      camera.position.set(12.0, 15.5, 54.0);
+      cameraTarget.set(16.0, 14.5, -7.0);
       camera.aspect = cachedWidth / cachedHeight;
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
@@ -1297,16 +1298,16 @@
       worldGroup.rotation.x = currentMouseY * 0.22;
 
       if (viewMode === 1) {
-        camera.position.x += (9.5 + currentMouseX * 6 - camera.position.x) * 0.05;
-        camera.position.y += (11.5 - currentMouseY * 3.5 - camera.position.y) * 0.05;
-        camera.position.z += (19.0 - camera.position.z) * 0.05;
-        targetLookVec.set(11.0, 3.8, -10.5);
+        camera.position.x += (13.5 + currentMouseX * 5 - camera.position.x) * 0.05;
+        camera.position.y += (14.5 - currentMouseY * 3.0 - camera.position.y) * 0.05;
+        camera.position.z += (34.0 - camera.position.z) * 0.05;
+        targetLookVec.set(16.0, 14.5, -7.0);
         cameraTarget.lerp(targetLookVec, 0.05);
       } else {
-        camera.position.x += (2.0 + currentMouseX * 8.5 - camera.position.x) * 0.06;
-        camera.position.y += (18.5 - currentMouseY * 5.0 - camera.position.y) * 0.06;
-        camera.position.z += (41.0 - camera.position.z) * 0.06;
-        targetLookVec.set(4.5 + currentMouseX * 3, 2.5 - currentMouseY * 1.5, -6.5);
+        camera.position.x += (12.0 + currentMouseX * 7.5 - camera.position.x) * 0.06;
+        camera.position.y += (15.5 - currentMouseY * 4.0 - camera.position.y) * 0.06;
+        camera.position.z += (54.0 - camera.position.z) * 0.06;
+        targetLookVec.set(16.0 + currentMouseX * 3, 14.5 - currentMouseY * 2.0, -7.0);
         cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
