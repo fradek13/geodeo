@@ -33,7 +33,7 @@
       0.1,
       600
     );
-    const cameraTarget = new THREE.Vector3(4.5, 2.0, -6.5);
+    const cameraTarget = new THREE.Vector3(4.5, 2.5, -6.5);
     camera.position.set(2.0, 18.5, 41.0);
     camera.lookAt(cameraTarget);
 
@@ -62,32 +62,75 @@
     scene.add(worldGroup);
 
     // =========================================================================
-    // FUNKCJA WYSOKOŚCI TERENU NMT (ZOPTYMALIZOWANA MATEMATYCZNIE)
+    // MODEL WYSOKOŚCIOWY TERENU: REALISTYCZNE POŁONINY BIESZCZADZKIE (NMT / CAD)
+    // Oparto na charakterystycznej topografii Połoniny Wetlińskiej i Caryńskiej:
+    // - Pasmo Główne z wieloma kulminacjami i siodłami połoninowymi (kierunek NW-SE)
+    // - Równoległe Pasmo Przednie (punkt widokowy geodety) i Pasmo Graniczne w głębi
+    // - Naturalne fałdy fliszowe, doliny potoków i łagodna terasa górska pod farmę PV
     // =========================================================================
+    const BIESZCZADY_ANGLE = -0.42; // kierunek przebiegu grzbietów fliszu karpackiego
+    const cosRidge = Math.cos(BIESZCZADY_ANGLE);
+    const sinRidge = Math.sin(BIESZCZADY_ANGLE);
+
     function computeStaticTerrainParams(x, z) {
-      const ridgeBoost =
-        Math.exp(-((x - 16.5) * (x - 16.5) + (z + 16.5) * (z + 16.5)) / 240) * 4.9 +
-        Math.exp(-((x - 2.0) * (x - 2.0) + (z + 15.5) * (z + 15.5)) / 180) * 3.8 +
-        Math.exp(-((x + 14) * (x + 14) + (z + 20) * (z + 20)) / 320) * 3.2;
+      // Współrzędne zorientowane wzdłuż (u) i w poprzek (v) pasm połoninowych
+      const u = x * cosRidge + z * sinRidge;
+      const v = -x * sinRidge + z * cosRidge;
 
-      const distFromCenter = Math.sqrt(x * x + z * z);
-      const radialMask = Math.max(0.2, 1.12 - distFromCenter / 78);
+      // 1. Pasmo Główne Połoniny (Caryńska / Wetlińska) – wyrazisty, falisty grzbiet
+      const distMain = v - (-7.5);
+      const mainProfile = Math.exp(-(distMain * distMain) / 160.0);
+      const mainCrest = 6.2 + 2.4 * Math.cos(u * 0.115 - 0.75) + 1.2 * Math.sin(u * 0.23 + 0.35);
+      const rMain = mainProfile * mainCrest;
 
-      const pvCenterDist = Math.sqrt((x - 12) * (x - 12) + (z + 1.5) * (z + 1.5));
-      const pvTerraceFactor = pvCenterDist < 16 ? 0.45 + 0.55 * (pvCenterDist / 16) : 1.0;
+      // 2. Pasmo Przednie (południowy grzbiet widokowy pod stanowisko geodezyjne)
+      const distFront = v - 13.0;
+      const frontProfile = Math.exp(-(distFront * distFront) / 185.0);
+      const frontCrest = 3.8 + 1.4 * Math.cos(u * 0.095 + 0.45) + 0.7 * Math.sin(u * 0.19);
+      const rFront = frontProfile * frontCrest;
+
+      // 3. Pasmo Graniczne w głębi (monumentalny bieszczadzki horyzont)
+      const distBack = v - (-31.0);
+      const backProfile = Math.exp(-(distBack * distBack) / 240.0);
+      const backCrest = 7.8 + 2.6 * Math.cos(u * 0.08 + 1.1);
+      const rBack = backProfile * backCrest;
+
+      // 4. Dolinki, debrza i naturalne fałdy fliszowe na stokach połonin
+      const folds = Math.sin(u * 0.13 + v * 0.065) * Math.cos(v * 0.10) * 1.5 +
+                    Math.cos(u * 0.22 - v * 0.08) * 0.65 +
+                    Math.sin(u * 0.38 + v * 0.18) * 0.25;
+
+      // 5. Stabilne wyniesienie grzbietowe pod wieżę telekomunikacyjną BOT-3E
+      const distTower = Math.sqrt((x - 16.8) * (x - 16.8) + (z + 16.5) * (z + 16.5));
+      const towerKnoll = Math.exp(-(distTower * distTower) / 36.0) * 1.8;
+
+      // 6. Naturalne wzniesienie pod stanowisko geodety z tachimetrem
+      const distSurv = Math.sqrt((x - 1.8) * (x - 1.8) + (z + 15.2) * (z + 15.2));
+      const survKnoll = Math.exp(-(distSurv * distSurv) / 30.0) * 1.2;
+
+      // 7. Terasa górska o łagodnym spadku pod instalację farmy PV
+      const pvDist = Math.sqrt((x - 12.0) * (x - 12.0) + (z + 2.0) * (z + 2.0));
+      const pvTerraceFactor = Math.max(0.0, 1.0 - pvDist / 17.0);
+
+      // 8. Płynne wygaszenie krawędzi siatki ku granicom przestrzeni
+      const distCenter = Math.sqrt(x * x + z * z);
+      const edgeFade = Math.max(0.0, 1.0 - Math.pow(distCenter / 72.0, 3.5));
+
+      let baseElev = (rMain + rFront + rBack + folds + towerKnoll + survKnoll) * edgeFade - 2.6;
+      baseElev = baseElev * (1.0 - pvTerraceFactor * 0.22);
+      const waveFactor = edgeFade * (1.0 - pvTerraceFactor * 0.7);
 
       return {
-        factor: radialMask * pvTerraceFactor,
-        offset: ridgeBoost - 1.2
+        factor: waveFactor,
+        offset: baseElev
       };
     }
 
     function getDynamicWaves(x, z, time) {
-      const t = time * 0.052;
-      const wave1 = Math.sin(x * 0.048 + t * 0.7) * Math.cos(z * 0.048 + t * 0.55) * 3.5;
-      const wave2 = Math.sin((x * 0.75 - z * 0.65) * 0.105 - t * 0.8) * 1.45;
-      const wave3 = Math.cos(x * 0.21 + t * 0.5) * Math.sin(z * 0.21 - t * 0.6) * 0.42;
-      return wave1 + wave2 + wave3;
+      const t = time * 0.038;
+      const wave1 = Math.sin(x * 0.042 + t * 0.7) * Math.cos(z * 0.042 + t * 0.55) * 1.1;
+      const wave2 = Math.sin((x * 0.65 - z * 0.55) * 0.085 - t * 0.8) * 0.5;
+      return wave1 + wave2;
     }
 
     function getTerrainElevation(x, z, time) {
@@ -96,13 +139,13 @@
     }
 
     // =========================================================================
-    // SIATKA TERENU NMT + CHMURA PUNKTÓW LIDAR (MNIEJSZA GĘSTOŚĆ NA MOBILE)
+    // SIATKA TERENU NMT + CHMURA PUNKTÓW LIDAR (POŁONINY BIESZCZADZKIE)
     // =========================================================================
     const width = 145;
     const depth = 145;
-    // Ta sama gęstość siatki na mobile i desktop (na mobile liczona tylko raz – tryb statyczny)
-    const segmentsX = 88;
-    const segmentsY = 88;
+    // Gęstość siatki NMT – bogata rzeźba terenu bez wpływu na wydajność
+    const segmentsX = 96;
+    const segmentsY = 96;
 
     const geometry = new THREE.PlaneGeometry(width, depth, segmentsX, segmentsY);
     geometry.rotateX(-Math.PI / 2);
@@ -1091,14 +1134,16 @@
         const y = getDynamicWaves(bx, bz, time) * vertexStaticFactor[i] + vertexStaticOffset[i];
         positions.setY(i, y);
 
-        const normH = Math.max(0, Math.min(1, (y + 4.5) / 10.8));
+        // Wysokość znormalizowana: od dolin (-4.7 m) po szczyty połonin (+9.1 m)
+        const normH = Math.max(0, Math.min(1, (y + 4.7) / 13.8));
 
-        if (normH < 0.45) {
-          tempColor.lerpColors(colorDeepBlue, colorTechCyan, normH / 0.45);
-        } else if (normH < 0.78) {
-          tempColor.lerpColors(colorTechCyan, colorWarmGold, (normH - 0.45) / 0.33);
+        // Spójna kolorystyka połonin: głęboki błękit dolin -> techniczny cyjan stoków -> ciepłe złoto grzbietów
+        if (normH < 0.38) {
+          tempColor.lerpColors(colorDeepBlue, colorTechCyan, normH / 0.38);
+        } else if (normH < 0.72) {
+          tempColor.lerpColors(colorTechCyan, colorWarmGold, (normH - 0.38) / 0.34);
         } else {
-          tempColor.lerpColors(colorWarmGold, colorBrightGold, (normH - 0.78) / 0.22);
+          tempColor.lerpColors(colorWarmGold, colorBrightGold, (normH - 0.72) / 0.28);
         }
 
         colorAttr.setXYZ(i, tempColor.r, tempColor.g, tempColor.b);
@@ -1292,14 +1337,14 @@
       const clampedAsp = Math.min(aspect, 0.55);
       camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
 
-      // Oddalona pozycja kamery obejmująca w całości całą wieżę i stanowisko geodety
-      camera.position.set(10.2, 18.0, 52.0);
-      cameraTarget.set(10.2, 16.5, -13.2);
+      // Oddalona pozycja kamery obejmująca w całości wieżę i stanowisko geodety na grzbiecie połoniny
+      camera.position.set(10.2, 20.5, 52.0);
+      cameraTarget.set(10.2, 19.5, -13.2);
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
 
       // Przejrzysta mgła przestrzenna zapewniająca wysoki kontrast i głębię
-      scene.fog.density = 0.0055;
+      scene.fog.density = 0.0052;
       bot3e.targetReticleGroup.lookAt(camera.position);
 
       renderer.render(scene, camera);
@@ -1314,7 +1359,7 @@
       renderer.setSize(cachedWidth, cachedHeight);
       camera.fov = 48;
       camera.position.set(2.0, 18.5, 41.0);
-      cameraTarget.set(4.5, 2.0, -6.5);
+      cameraTarget.set(4.5, 2.5, -6.5);
       camera.aspect = cachedWidth / cachedHeight;
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
@@ -1366,7 +1411,7 @@
         camera.position.x += (2.0 + currentMouseX * 8.5 - camera.position.x) * 0.06;
         camera.position.y += (18.5 - currentMouseY * 5.0 - camera.position.y) * 0.06;
         camera.position.z += (41.0 - camera.position.z) * 0.06;
-        targetLookVec.set(4.5 + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5);
+        targetLookVec.set(4.5 + currentMouseX * 3, 2.5 - currentMouseY * 1.5, -6.5);
         cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
