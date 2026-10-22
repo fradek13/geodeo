@@ -1252,17 +1252,24 @@
       cursorOuterRing.rotation.z = elapsedTime * 0.8;
       cursorLight.position.set(cursorWorldX, cursorWorldY + 3.5, cursorWorldZ);
 
+      const isMobileViewport = container.clientWidth < 768;
+
       if (viewMode === 1) {
+        const zoomZ = isMobileViewport ? 27.0 : 19.0;
+        const zoomTargetX = isMobileViewport ? 11.5 : 11.0;
         camera.position.x += (9.5 + currentMouseX * 6 - camera.position.x) * 0.05;
         camera.position.y += (11.5 - currentMouseY * 3.5 - camera.position.y) * 0.05;
-        camera.position.z += (19.0 - camera.position.z) * 0.05;
-        cameraTarget.lerp(new THREE.Vector3(11.0, 3.8, -10.5), 0.05);
+        camera.position.z += (zoomZ - camera.position.z) * 0.05;
+        cameraTarget.lerp(new THREE.Vector3(zoomTargetX, 3.8, -10.5), 0.05);
       } else {
-        camera.position.x += (2 + currentMouseX * 8.5 - camera.position.x) * 0.06;
+        const baseCamX = isMobileViewport ? 7.5 : 2.0;
+        const baseCamZ = isMobileViewport ? 50.0 : 41.0;
+        const baseLookX = isMobileViewport ? 9.5 : 4.5;
+        camera.position.x += (baseCamX + currentMouseX * 8.5 - camera.position.x) * 0.06;
         camera.position.y += (18.5 - currentMouseY * 5.0 - camera.position.y) * 0.06;
-        camera.position.z += (41 - camera.position.z) * 0.06;
+        camera.position.z += (baseCamZ - camera.position.z) * 0.06;
         cameraTarget.lerp(
-          new THREE.Vector3(4.5 + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5),
+          new THREE.Vector3(baseLookX + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5),
           0.06
         );
       }
