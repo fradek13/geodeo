@@ -17,6 +17,11 @@
     const container = document.getElementById('hero-3d-canvas-container');
     if (!container || typeof THREE === 'undefined') return;
 
+    // Buforowane wymiary widoku (brak kosztownego odczytu DOM w pętli requestAnimationFrame)
+    let cachedWidth = container.clientWidth || window.innerWidth;
+    let cachedHeight = container.clientHeight || 560;
+    let isMobileViewport = cachedWidth < 768;
+
     // 1. Scena i mgła przestrzenna
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x050914, 0.008);
@@ -24,22 +29,22 @@
     // 2. Kamera perspektywiczna
     const camera = new THREE.PerspectiveCamera(
       48,
-      container.clientWidth / container.clientHeight,
+      cachedWidth / cachedHeight,
       0.1,
       600
     );
-    camera.position.set(2, 18.5, 42);
-    const cameraTarget = new THREE.Vector3(4.5, 2.0, -6.5);
+    camera.position.set(isMobileViewport ? 7.5 : 2, 18.5, isMobileViewport ? 50 : 42);
+    const cameraTarget = new THREE.Vector3(isMobileViewport ? 9.5 : 4.5, 2.0, -6.5);
     camera.lookAt(cameraTarget);
 
-    // 3. Renderer WebGL
+    // 3. Renderer WebGL (zoptymalizowany pod kątem GPU smartfonów)
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      alpha: true,
+      antialias: !isMobileViewport,
+      alpha: false,
       powerPreference: 'high-performance'
     });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(cachedWidth, cachedHeight);
+    renderer.setPixelRatio(isMobileViewport ? 1 : Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x050914, 1);
 
     container.innerHTML = '';
@@ -52,51 +57,46 @@
     scene.add(worldGroup);
 
     // =========================================================================
-    // FUNKCJA WYSOKOŚCI TERENU NMT (POWOLNE, MAJESTATYCZNE FALOWANIE)
+    // FUNKCJA WYSOKOŚCI TERENU NMT (ZOPTYMALIZOWANA MATEMATYCZNIE)
     // =========================================================================
-    function getTerrainElevation(x, z, time) {
-      const t = time * 0.052;
-
-      const scale1 = 0.048;
-      const scale2 = 0.105;
-      const scale3 = 0.21;
-
-      // Wzniesienie pod wieżę BOT-3E (prawy dalszy plan) oraz skraj grzbietu pod stanowisko geodety (po lewej od wieży)
+    function computeStaticTerrainParams(x, z) {
       const ridgeBoost =
         Math.exp(-((x - 16.5) * (x - 16.5) + (z + 16.5) * (z + 16.5)) / 240) * 4.9 +
         Math.exp(-((x - 2.0) * (x - 2.0) + (z + 15.5) * (z + 15.5)) / 180) * 3.8 +
         Math.exp(-((x + 14) * (x + 14) + (z + 20) * (z + 20)) / 320) * 3.2;
 
-      const wave1 =
-        Math.sin(x * scale1 + t * 0.7) *
-        Math.cos(z * scale1 + t * 0.55) *
-        3.5;
-
-      const wave2 =
-        Math.sin((x * 0.75 - z * 0.65) * scale2 - t * 0.8) * 1.45;
-
-      const wave3 =
-        Math.cos(x * scale3 + t * 0.5) *
-        Math.sin(z * scale3 - t * 0.6) *
-        0.42;
-
       const distFromCenter = Math.sqrt(x * x + z * z);
       const radialMask = Math.max(0.2, 1.12 - distFromCenter / 78);
 
-      // Wypłaszczenie tarasu inżynieryjnego pod farmą PV
       const pvCenterDist = Math.sqrt((x - 12) * (x - 12) + (z + 1.5) * (z + 1.5));
       const pvTerraceFactor = pvCenterDist < 16 ? 0.45 + 0.55 * (pvCenterDist / 16) : 1.0;
 
-      return (wave1 + wave2 + wave3) * radialMask * pvTerraceFactor + ridgeBoost - 1.2;
+      return {
+        factor: radialMask * pvTerraceFactor,
+        offset: ridgeBoost - 1.2
+      };
+    }
+
+    function getDynamicWaves(x, z, time) {
+      const t = time * 0.052;
+      const wave1 = Math.sin(x * 0.048 + t * 0.7) * Math.cos(z * 0.048 + t * 0.55) * 3.5;
+      const wave2 = Math.sin((x * 0.75 - z * 0.65) * 0.105 - t * 0.8) * 1.45;
+      const wave3 = Math.cos(x * 0.21 + t * 0.5) * Math.sin(z * 0.21 - t * 0.6) * 0.42;
+      return wave1 + wave2 + wave3;
+    }
+
+    function getTerrainElevation(x, z, time) {
+      const st = computeStaticTerrainParams(x, z);
+      return getDynamicWaves(x, z, time) * st.factor + st.offset;
     }
 
     // =========================================================================
-    // SIATKA TERENU NMT + CHMURA PUNKTÓW LIDAR
+    // SIATKA TERENU NMT + CHMURA PUNKTÓW LIDAR (MNIEJSZA GĘSTOŚĆ NA MOBILE)
     // =========================================================================
     const width = 145;
     const depth = 145;
-    const segmentsX = 112;
-    const segmentsY = 112;
+    const segmentsX = isMobileViewport ? 48 : 88;
+    const segmentsY = isMobileViewport ? 48 : 88;
 
     const geometry = new THREE.PlaneGeometry(width, depth, segmentsX, segmentsY);
     geometry.rotateX(-Math.PI / 2);
@@ -107,9 +107,16 @@
 
     const posAttr = geometry.attributes.position;
     const basePositions = new Float32Array(vertexCount * 2);
+    const vertexStaticFactor = new Float32Array(vertexCount);
+    const vertexStaticOffset = new Float32Array(vertexCount);
     for (let i = 0; i < vertexCount; i++) {
-      basePositions[i * 2] = posAttr.getX(i);
-      basePositions[i * 2 + 1] = posAttr.getZ(i);
+      const vx = posAttr.getX(i);
+      const vz = posAttr.getZ(i);
+      basePositions[i * 2] = vx;
+      basePositions[i * 2 + 1] = vz;
+      const st = computeStaticTerrainParams(vx, vz);
+      vertexStaticFactor[i] = st.factor;
+      vertexStaticOffset[i] = st.offset;
     }
 
     const solidMaterial = new THREE.MeshStandardMaterial({
@@ -1063,6 +1070,9 @@
     const apexPointVec = new THREE.Vector3();
     const midCheckVec = new THREE.Vector3();
     const lowCheckVec = new THREE.Vector3();
+    const aimDirVec = new THREE.Vector3();
+    const targetLookVec = new THREE.Vector3();
+    let frameCounter = 0;
 
     function updateSceneGeometry(time) {
       const positions = geometry.attributes.position;
@@ -1072,7 +1082,7 @@
         const bx = basePositions[i * 2];
         const bz = basePositions[i * 2 + 1];
 
-        const y = getTerrainElevation(bx, bz, time);
+        const y = getDynamicWaves(bx, bz, time) * vertexStaticFactor[i] + vertexStaticOffset[i];
         positions.setY(i, y);
 
         const normH = Math.max(0, Math.min(1, (y + 4.5) / 10.8));
@@ -1090,15 +1100,16 @@
 
       positions.needsUpdate = true;
       colorAttr.needsUpdate = true;
-      geometry.computeVertexNormals();
+      if (frameCounter === 0 || (!isMobileViewport && frameCounter % 4 === 0)) {
+        geometry.computeVertexNormals();
+      }
+      frameCounter++;
 
       // 1. Posadowienie stołów PV wraz z dopasowaniem do lokalnego nachylenia stoku
-      // Dzięki temu wszystkie 4 przednie nogi i 4 tylne nogi mają równą wysokość nad siatką terenu
       pvTablesList.forEach((item) => {
         const ty = getTerrainElevation(item.x, item.z, time);
         item.mesh.position.y = ty;
 
-        // Próbkowanie spadku terenu wzdłuż osi stołu, by skrajne nogi idealnie siedziały na siatce
         const dx = Math.cos(item.yaw) * 3.0;
         const dz = -Math.sin(item.yaw) * 3.0;
         const yLeft = getTerrainElevation(item.x - dx, item.z - dz, time);
@@ -1111,7 +1122,6 @@
       const towerY = getTerrainElevation(towerCoords.x, towerCoords.z, time);
       bot3e.group.position.y = towerY;
 
-      // Obrót i pulsowanie celownika pryzmatycznego na czubku wieży
       const beaconPulse = 0.7 + 0.3 * Math.sin(time * 3.2);
       bot3e.targetReticleGroup.scale.setScalar(0.95 + beaconPulse * 0.35);
       bot3e.targetReticleGroup.lookAt(camera.position);
@@ -1143,22 +1153,19 @@
         towerCoords.z
       );
 
-      // Ustawienie azymutu alidady i kąta pionowego lunety tachimetru na czubek wieży
-      const aimDir = new THREE.Vector3().subVectors(apexPointVec, startPointVec);
-      const horizDist = Math.sqrt(aimDir.x * aimDir.x + aimDir.z * aimDir.z);
-      const yawToTower = Math.atan2(aimDir.x, aimDir.z);
-      const pitchToApex = -Math.atan2(aimDir.y, horizDist);
+      aimDirVec.subVectors(apexPointVec, startPointVec);
+      const horizDist = Math.sqrt(aimDirVec.x * aimDirVec.x + aimDirVec.z * aimDirVec.z);
+      const yawToTower = Math.atan2(aimDirVec.x, aimDirVec.z);
+      const pitchToApex = -Math.atan2(aimDirVec.y, horizDist);
 
       surveyorStation.instrumentGroup.rotation.y = yawToTower;
       surveyorStation.telescopeGroup.rotation.x = pitchToApex;
 
-      // Aktualizacja głównej wiązki laserowej (Tachimetr -> Czubek wieży)
       const mainPos = laserMainGeo.attributes.position;
       mainPos.setXYZ(0, startPointVec.x, startPointVec.y, startPointVec.z);
       mainPos.setXYZ(1, apexPointVec.x, apexPointVec.y, apexPointVec.z);
       mainPos.needsUpdate = true;
 
-      // Aktualizacja pomocniczych celowych kontrolnych pionowości (Tachimetr -> Sekcja środkowa i dolna)
       const checkPos = laserCheckGeo.attributes.position;
       checkPos.setXYZ(0, startPointVec.x, startPointVec.y, startPointVec.z);
       checkPos.setXYZ(1, midCheckVec.x, midCheckVec.y, midCheckVec.z);
@@ -1166,13 +1173,11 @@
       checkPos.setXYZ(3, lowCheckVec.x, lowCheckVec.y, lowCheckVec.z);
       checkPos.needsUpdate = true;
 
-      // Impulsy dalmierza EDM biegnące po wiązce celowej na czubek wieży
       edmPulses.forEach((p) => {
         const progress = (time * 0.48 + p.offset) % 1;
         p.mesh.position.lerpVectors(startPointVec, apexPointVec, progress);
       });
 
-      // Aktualizacja złotych punktów osnowy
       beacons.forEach((b, idx) => {
         const by = getTerrainElevation(b.x, b.z, time);
         b.group.position.y = by;
@@ -1182,7 +1187,7 @@
     }
 
     // =========================================================================
-    // RESPONSYWNA INTERAKCJA Z MYSZKĄ I DOTYKIEM
+    // RESPONSYWNA INTERAKCJA Z MYSZKĄ (BEZ BLOKOWANIA SKROLOWANIA DOTYKOWEGO)
     // =========================================================================
     let targetMouseX = 0;
     let targetMouseY = 0;
@@ -1190,17 +1195,13 @@
     let currentMouseY = 0;
 
     function handlePointerMove(clientX, clientY) {
-      targetMouseX = (clientX / window.innerWidth - 0.5) * 2;
-      targetMouseY = (clientY / window.innerHeight - 0.5) * 2;
+      targetMouseX = (clientX / cachedWidth - 0.5) * 2;
+      targetMouseY = (clientY / cachedHeight - 0.5) * 2;
     }
 
     window.addEventListener('mousemove', (e) => {
-      handlePointerMove(e.clientX, e.clientY);
-    }, { passive: true });
-
-    window.addEventListener('touchmove', (e) => {
-      if (e.touches && e.touches.length > 0) {
-        handlePointerMove(e.touches[0].clientX, e.touches[0].clientY);
+      if (!isMobileViewport) {
+        handlePointerMove(e.clientX, e.clientY);
       }
     }, { passive: true });
 
@@ -1230,9 +1231,29 @@
 
     const coordsHud = document.getElementById('hud-live-coords');
     const clock = new THREE.Clock();
+    let isHeroVisible = true;
+    let lastFrameTime = 0;
+    let lastHudUpdate = 0;
 
-    function animate() {
+    // Automatyczne wstrzymywanie renderowania WebGL gdy sekcja Hero zniknie z ekranu podczas skrolowania
+    const heroSection = container.closest('.hero-3d-wrapper') || container;
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          isHeroVisible = entry.isIntersecting;
+        });
+      }, { threshold: 0.01 });
+      observer.observe(heroSection);
+    }
+
+    function animate(now) {
       requestAnimationFrame(animate);
+
+      if (!isHeroVisible || document.hidden) return;
+
+      // Na urządzeniach mobilnych ograniczamy odświeżanie WebGL do ~28 FPS, uwalniając wątek główny dla 60/120Hz skrolowania
+      if (isMobileViewport && now - lastFrameTime < 34) return;
+      lastFrameTime = now;
 
       const elapsedTime = clock.getElapsedTime();
 
@@ -1252,15 +1273,14 @@
       cursorOuterRing.rotation.z = elapsedTime * 0.8;
       cursorLight.position.set(cursorWorldX, cursorWorldY + 3.5, cursorWorldZ);
 
-      const isMobileViewport = container.clientWidth < 768;
-
       if (viewMode === 1) {
         const zoomZ = isMobileViewport ? 27.0 : 19.0;
         const zoomTargetX = isMobileViewport ? 11.5 : 11.0;
         camera.position.x += (9.5 + currentMouseX * 6 - camera.position.x) * 0.05;
         camera.position.y += (11.5 - currentMouseY * 3.5 - camera.position.y) * 0.05;
         camera.position.z += (zoomZ - camera.position.z) * 0.05;
-        cameraTarget.lerp(new THREE.Vector3(zoomTargetX, 3.8, -10.5), 0.05);
+        targetLookVec.set(zoomTargetX, 3.8, -10.5);
+        cameraTarget.lerp(targetLookVec, 0.05);
       } else {
         const baseCamX = isMobileViewport ? 7.5 : 2.0;
         const baseCamZ = isMobileViewport ? 50.0 : 41.0;
@@ -1268,14 +1288,14 @@
         camera.position.x += (baseCamX + currentMouseX * 8.5 - camera.position.x) * 0.06;
         camera.position.y += (18.5 - currentMouseY * 5.0 - camera.position.y) * 0.06;
         camera.position.z += (baseCamZ - camera.position.z) * 0.06;
-        cameraTarget.lerp(
-          new THREE.Vector3(baseLookX + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5),
-          0.06
-        );
+        targetLookVec.set(baseLookX + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5);
+        cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
 
-      if (coordsHud && Math.floor(elapsedTime * 12) % 2 === 0) {
+      // Aktualizacja tekstu współrzędnych maksymalnie raz na sekundę i tylko na desktopie (eliminacja layout thrashing na mobile)
+      if (!isMobileViewport && coordsHud && elapsedTime - lastHudUpdate > 1.0) {
+        lastHudUpdate = elapsedTime;
         const xVal = (5492810.4 + cursorWorldX * 4.2 + Math.sin(elapsedTime * 0.2) * 1.5).toFixed(2);
         const yVal = (7582104.8 + cursorWorldZ * 4.2 + Math.cos(elapsedTime * 0.2) * 1.5).toFixed(2);
         const hVal = (412.6 + cursorWorldY * 8.5).toFixed(2);
@@ -1285,14 +1305,22 @@
       renderer.render(scene, camera);
     }
 
-    animate();
+    requestAnimationFrame(animate);
 
+    let resizeTimer;
     window.addEventListener('resize', () => {
-      if (!container) return;
-      camera.aspect = container.clientWidth / container.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(container.clientWidth, container.clientHeight);
-    });
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!container) return;
+        cachedWidth = container.clientWidth || window.innerWidth;
+        cachedHeight = container.clientHeight || 560;
+        isMobileViewport = cachedWidth < 768;
+        camera.aspect = cachedWidth / cachedHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(cachedWidth, cachedHeight);
+        renderer.setPixelRatio(isMobileViewport ? 1 : Math.min(window.devicePixelRatio, 1.5));
+      }, 120);
+    }, { passive: true });
   }
 
   if (document.readyState === 'loading') {
