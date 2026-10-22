@@ -33,8 +33,8 @@
       0.1,
       600
     );
-    const cameraTarget = new THREE.Vector3(3.5, 14.5, -8.0);
-    camera.position.set(3.5, 15.5, 54.0);
+    const cameraTarget = new THREE.Vector3(3.5, 14.5, -7.0);
+    camera.position.set(3.5, 16.0, 55.0);
     camera.lookAt(cameraTarget);
 
     // Smartfony (< 768px): tryb STATYCZNY – jedna ostra klatka bez pętli animacji (brak lagów)
@@ -77,58 +77,49 @@
       const u = x * cosRidge + z * sinRidge;
       const v = -x * sinRidge + z * cosRidge;
 
-      // 1. Pasmo Główne Połoniny (Caryńska / Wetlińska) – wyrazisty, falisty grzbiet
-      const distMain = v - (-7.5);
-      const mainProfile = Math.exp(-(distMain * distMain) / 160.0);
-      const mainCrest = 6.2 + 2.4 * Math.cos(u * 0.115 - 0.75) + 1.2 * Math.sin(u * 0.23 + 0.35);
+      // 1. Pasmo Główne Połoniny (szeroki, majestatyczny grzbiet fliszowy Caryńskiej / Wetlińskiej)
+      // Szeroki, łagodny profil poprzeczny bez ostrych stożków (W = 16.0 m)
+      const distMain = v - (-6.0);
+      const mainProfile = Math.exp(-Math.pow(distMain / 16.0, 2.0));
+      const mainCrest = 6.4 + 1.6 * Math.cos(u * 0.082 - 0.35) + 0.7 * Math.sin(u * 0.15 + 0.2);
       const rMain = mainProfile * mainCrest;
 
-      // 2. Pasmo Przednie (południowy grzbiet widokowy pod stanowisko geodezyjne)
-      const distFront = v - 13.0;
-      const frontProfile = Math.exp(-(distFront * distFront) / 185.0);
-      const frontCrest = 3.8 + 1.4 * Math.cos(u * 0.095 + 0.45) + 0.7 * Math.sin(u * 0.19);
+      // 2. Pasmo Przednie (równoległy, łagodny grzbiet widokowy pod stanowisko geodezyjne)
+      const distFront = v - 16.0;
+      const frontProfile = Math.exp(-Math.pow(distFront / 18.0, 2.0));
+      const frontCrest = 4.8 + 1.2 * Math.cos(u * 0.075 + 0.7) + 0.5 * Math.sin(u * 0.16);
       const rFront = frontProfile * frontCrest;
 
-      // 3. Pasmo Graniczne w głębi (monumentalny bieszczadzki horyzont)
-      const distBack = v - (-31.0);
-      const backProfile = Math.exp(-(distBack * distBack) / 240.0);
-      const backCrest = 7.8 + 2.6 * Math.cos(u * 0.08 + 1.1);
+      // 3. Pasmo Graniczne w głębi (monumentalny, miękki horyzont bieszczadzki)
+      const distBack = v - (-30.0);
+      const backProfile = Math.exp(-Math.pow(distBack / 22.0, 2.0));
+      const backCrest = 7.2 + 2.0 * Math.cos(u * 0.065 + 1.0);
       const rBack = backProfile * backCrest;
 
-      // 4. Dolinki, debrza i naturalne fałdy fliszowe na stokach połonin
-      const folds = Math.sin(u * 0.13 + v * 0.065) * Math.cos(v * 0.10) * 1.5 +
-                    Math.cos(u * 0.22 - v * 0.08) * 0.65 +
-                    Math.sin(u * 0.38 + v * 0.18) * 0.25;
+      // 4. Miękkie, faliste ukształtowanie zboczy i debrzy (struktura fliszu karpackiego)
+      const flisz = Math.sin(u * 0.10 + v * 0.045) * Math.cos(v * 0.075) * 1.0 +
+                    Math.cos(u * 0.16 - v * 0.06) * 0.45;
 
-      // 5. Kotwiczenie wieży na wierzchołku: wyrazista górka z wypłaszczeniem pod stopy wieży BOT-3E
-      const distTower = Math.sqrt((x - 3.5) * (x - 3.5) + (z + 8.0) * (z + 8.0));
-      const towerKnoll = Math.exp(-(distTower * distTower) / 72.0) * 4.2;
-      const towerPlateau = Math.max(0.0, 1.0 - distTower / 4.6);
+      // 5. Naturalne, szerokie zgrubienie grzbietu pod wieżę (szerokie na 28m, stabilne oparcie stóp bez stożka)
+      const distTower = Math.sqrt((x - 3.5) * (x - 3.5) + (z + 7.5) * (z + 7.5));
+      const towerBroadSwell = Math.exp(-Math.pow(distTower / 18.0, 2.0)) * 1.35;
 
-      // 6. Stanowisko geodety: wierzchołek sąsiedniej górki widokowej po lewej stronie
-      const distSurv = Math.sqrt((x + 11.5) * (x + 11.5) + (z + 9.5) * (z + 9.5));
-      const survKnoll = Math.exp(-(distSurv * distSurv) / 52.0) * 3.4;
-      const survPlateau = Math.max(0.0, 1.0 - distSurv / 3.2);
+      // 6. Naturalne, łagodne wzniesienie pod stanowisko geodety na sąsiednim grzbiecie
+      const distSurv = Math.sqrt((x + 12.5) * (x + 12.5) + (z + 10.0) * (z + 10.0));
+      const survBroadSwell = Math.exp(-Math.pow(distSurv / 16.0, 2.0)) * 1.1;
 
-      // 7. Wzgórze i słoneczne zbocze pod farmę PV po prawej stronie wieży
-      const distPVHill = Math.sqrt((x - 16.5) * (x - 16.5) + (z + 1.0) * (z + 1.0));
-      const pvHill = Math.exp(-(distPVHill * distPVHill) / 130.0) * 2.8;
-      const distPVSlope = Math.sqrt((x - 16.5) * (x - 16.5) + (z - 2.6) * (z - 2.6));
-      const pvTerraceFactor = Math.max(0.0, 1.0 - distPVSlope / 14.0);
+      // 7. Słoneczne obniżenie dolinne pod farmę PV (dolina poniżej wieży od południa: Z = 1.0 do 7.0)
+      const pvValleyDist = Math.sqrt((x - 9.5) * (x - 9.5) + (z - 4.0) * (z - 4.0));
+      const pvValleyFactor = Math.max(0.0, 1.0 - pvValleyDist / 16.0);
 
       // 8. Płynne wygaszenie krawędzi siatki ku granicom przestrzeni
       const distCenter = Math.sqrt(x * x + z * z);
       const edgeFade = Math.max(0.0, 1.0 - Math.pow(distCenter / 72.0, 3.5));
 
-      let baseElev = (rMain + rFront + rBack + folds + towerKnoll + survKnoll + pvHill) * edgeFade - 2.8;
-      baseElev = baseElev * (1.0 - pvTerraceFactor * 0.18);
-      if (distTower < 4.6) {
-        baseElev += towerPlateau * 0.45;
-      }
-      if (distSurv < 3.2) {
-        baseElev += survPlateau * 0.35;
-      }
-      const waveFactor = edgeFade * (1.0 - pvTerraceFactor * 0.65);
+      let baseElev = (rMain + rFront + rBack + flisz + towerBroadSwell + survBroadSwell) * edgeFade - 2.8;
+      // Wypłaszczone, gładkie dno doliny pod farmę PV wkomponowane w rzeźbę zbocza
+      baseElev = baseElev * (1.0 - pvValleyFactor * 0.18);
+      const waveFactor = edgeFade * (1.0 - pvValleyFactor * 0.65);
 
       return {
         factor: waveFactor,
@@ -491,21 +482,20 @@
       return tableGroup;
     }
 
-    // Rozmieszczenie stołów PV w układzie rzeczywistej farmy fotowoltaicznej:
-    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów) na słonecznym zboczu po prawej stronie wieży.
-    // Zwiększony rozmiar stołów (5 kolumn modułów) ze zwartymi odstępami (zmniejszonymi o 50%):
-    // Rząd 1 (frontowy / dolny na zboczu po prawej stronie wieży): z: 5.2
-    // Rząd 2 (tylny / górny na zboczu po prawej stronie wieży): z: 0.0
+    // Rozmieszczenie stołów PV w naturalnym obniżeniu terenu (dolinie) poniżej wieży od południowej strony:
+    // Dokładnie 2 zwarte rzędy po 3 stoły (łącznie 6 stołów) z dynamicznym refleksem słonecznym:
+    // Rząd 1 (frontowy / dolny w południowej dolinie, z = 6.5): x: [3.0, 9.5, 16.0]
+    // Rząd 2 (tylny / na zboczu ku wieży, z = 1.5): x: [3.0, 9.5, 16.0]
     const pvTablesList = [];
     const pvLayout = [
-      // Rząd 1 (frontowy / dolny na zboczu po prawej stronie wieży)
-      { x:  9.9, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
-      { x: 16.5, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
-      { x: 23.1, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
-      // Rząd 2 (tylny / górny na zboczu po prawej stronie wieży)
-      { x:  9.9, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 },
-      { x: 16.5, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 },
-      { x: 23.1, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 }
+      // Rząd 1 (frontowy / dolny w słonecznej dolinie poniżej wieży)
+      { x:  3.0, z: 6.5, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x:  9.5, z: 6.5, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 16.0, z: 6.5, yaw: 0.0, cols: 5, scale: 0.95 },
+      // Rząd 2 (tylny / na zboczu doliny poniżej wieży)
+      { x:  3.0, z: 1.5, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x:  9.5, z: 1.5, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 16.0, z: 1.5, yaw: 0.0, cols: 5, scale: 0.95 }
     ];
 
     pvLayout.forEach((cfg) => {
@@ -519,9 +509,9 @@
 
     // =========================================================================
     // WIEŻA TELEKOMUNIKACYJNA BOT-3E (TRÓJKĄT RÓWNOBOCZNY, 3 STOPY, KRATOWNICA X)
-    // Usytuowana centralnie na wierzchołku głównego szczytu bieszczadzkiego
+    // Posadowiona stabilnie na naturalnym, szerokim zgrubieniu grzbietu połoniny
     // =========================================================================
-    const towerCoords = { x: 3.5, z: -8.0 };
+    const towerCoords = { x: 3.5, z: -7.5 };
     const towerTotalHeight = 25.5;
 
     function createBOT3ETower() {
@@ -574,16 +564,16 @@
       });
 
       const pierDepth = 3.6;
-      const padBottomGeo = new THREE.BoxGeometry(1.5, pierDepth, 1.5);
+      const padBottomGeo = new THREE.BoxGeometry(1.65, pierDepth, 1.65);
       const padBottomEdges = new THREE.EdgesGeometry(padBottomGeo);
-      const pedestalGeo = new THREE.BoxGeometry(0.76, 1.1, 0.76);
+      const pedestalGeo = new THREE.BoxGeometry(0.8, 1.1, 0.8);
       const pedestalEdges = new THREE.EdgesGeometry(pedestalGeo);
 
       for (let l = 0; l < 3; l++) {
         const baseCorner = getCornerPos(0, l);
 
         const padBottom = new THREE.Mesh(padBottomGeo, concreteMat);
-        padBottom.position.set(baseCorner.x, -pierDepth * 0.5 + 0.2, baseCorner.z);
+        padBottom.position.set(baseCorner.x, -pierDepth * 0.5 + 0.25, baseCorner.z);
         towerGroup.add(padBottom);
 
         const padWire = new THREE.LineSegments(padBottomEdges, concreteEdgeMat);
@@ -769,10 +759,10 @@
     worldGroup.add(bot3e.group);
 
     // =========================================================================
-    // GEODETA Z TACHIMETREM NA WIERZCHOŁKU SĄSIEDNIEJ GÓRKI (POMIAR PIONOWOŚCI)
+    // GEODETA Z TACHIMETREM NA SĄSIEDNIM ŁAGODNYM WZNIESIENIU (POMIAR PIONOWOŚCI)
     // =========================================================================
-    // Naturalna kompozycja krajobrazowa na sąsiednim wierzchołku po lewej stronie wieży
-    const surveyorCoords = { x: -11.5, z: -9.5 };
+    // Naturalna kompozycja krajobrazowa na łagodnym grzbiecie po lewej stronie wieży
+    const surveyorCoords = { x: -12.5, z: -10.0 };
 
     function createSurveyorStation() {
       const stationGroup = new THREE.Group();
@@ -1165,7 +1155,7 @@
       const nDotL = panelNorm.dot(sunDir);
       const reflDir = panelNorm.clone().multiplyScalar(2 * nDotL).sub(sunDir).normalize();
 
-      const camDirPV = camera.position.clone().sub(new THREE.Vector3(16.5, 2.5, 2.5)).normalize();
+      const camDirPV = camera.position.clone().sub(new THREE.Vector3(9.5, 3.5, 4.0)).normalize();
       const specAlignment = Math.max(0, reflDir.dot(camDirPV));
       const specularGlint = Math.pow(specAlignment, 6.0);
 
@@ -1280,8 +1270,8 @@
       camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
 
       // Oddalona pozycja kamery obejmująca w całości wieżę i stanowisko geodety na grzbiecie połoniny
-      camera.position.set(3.5, 16.5, 62.0);
-      cameraTarget.set(3.5, 15.0, -8.0);
+      camera.position.set(3.5, 17.0, 62.0);
+      cameraTarget.set(3.5, 14.5, -7.0);
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
 
@@ -1298,8 +1288,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       renderer.setSize(cachedWidth, cachedHeight);
       camera.fov = 48;
-      camera.position.set(3.5, 15.5, 54.0);
-      cameraTarget.set(3.5, 14.5, -8.0);
+      camera.position.set(3.5, 16.0, 55.0);
+      cameraTarget.set(3.5, 14.5, -7.0);
       camera.aspect = cachedWidth / cachedHeight;
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
@@ -1338,13 +1328,13 @@
         camera.position.x += (5.0 + currentMouseX * 5 - camera.position.x) * 0.05;
         camera.position.y += (14.5 - currentMouseY * 3.0 - camera.position.y) * 0.05;
         camera.position.z += (34.0 - camera.position.z) * 0.05;
-        targetLookVec.set(3.5, 14.5, -8.0);
+        targetLookVec.set(3.5, 14.5, -7.0);
         cameraTarget.lerp(targetLookVec, 0.05);
       } else {
         camera.position.x += (3.5 + currentMouseX * 7.5 - camera.position.x) * 0.06;
-        camera.position.y += (15.5 - currentMouseY * 4.0 - camera.position.y) * 0.06;
-        camera.position.z += (54.0 - camera.position.z) * 0.06;
-        targetLookVec.set(3.5 + currentMouseX * 3, 14.5 - currentMouseY * 2.0, -8.0);
+        camera.position.y += (16.0 - currentMouseY * 4.0 - camera.position.y) * 0.06;
+        camera.position.z += (55.0 - camera.position.z) * 0.06;
+        targetLookVec.set(3.5 + currentMouseX * 3, 14.5 - currentMouseY * 2.0, -7.0);
         cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
