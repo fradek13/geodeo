@@ -100,16 +100,16 @@
                     Math.cos(u * 0.22 - v * 0.08) * 0.65 +
                     Math.sin(u * 0.38 + v * 0.18) * 0.25;
 
-      // 5. Stabilne wyniesienie grzbietowe pod wieżę telekomunikacyjną BOT-3E
-      const distTower = Math.sqrt((x - 16.8) * (x - 16.8) + (z + 16.5) * (z + 16.5));
+      // 5. Stabilne wyniesienie grzbietowe pod wieżę telekomunikacyjną BOT-3E na pierwszym planie
+      const distTower = Math.sqrt((x - 16.5) * (x - 16.5) + (z + 7.0) * (z + 7.0));
       const towerKnoll = Math.exp(-(distTower * distTower) / 36.0) * 1.8;
 
       // 6. Naturalne wzniesienie pod stanowisko geodety z tachimetrem
-      const distSurv = Math.sqrt((x - 1.8) * (x - 1.8) + (z + 15.2) * (z + 15.2));
+      const distSurv = Math.sqrt((x - 0.5) * (x - 0.5) + (z + 14.0) * (z + 14.0));
       const survKnoll = Math.exp(-(distSurv * distSurv) / 30.0) * 1.2;
 
-      // 7. Terasa górska o łagodnym spadku pod instalację farmy PV
-      const pvDist = Math.sqrt((x - 12.0) * (x - 12.0) + (z + 2.0) * (z + 2.0));
+      // 7. Terasa górska o łagodnym spadku pod instalację farmy PV (dwa rzędy po 3 stoły)
+      const pvDist = Math.sqrt((x - 3.5) * (x - 3.5) + (z - 3.0) * (z - 3.0));
       const pvTerraceFactor = Math.max(0.0, 1.0 - pvDist / 17.0);
 
       // 8. Płynne wygaszenie krawędzi siatki ku granicom przestrzeni
@@ -478,19 +478,19 @@
       return tableGroup;
     }
 
-    // Rozmieszczenie stołów PV (ustawione pod kątem, by z kamery świetnie było widać przednie i tylne nogi, zastrzały, szyny i dylatacje)
+    // Rozmieszczenie stołów PV w układzie rzeczywistej farmy fotowoltaicznej:
+    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów), równoległe rzędy z odstępem międzyrzędowym,
+    // usytuowane w dolinie tak, by nie zasłaniały wieży ani geodety wykonującego pomiary.
     const pvTablesList = [];
     const pvLayout = [
-      // Pierwszy rząd (pierwszy plan po prawej stronie — doskonale widoczne nogi przednie i tylne)
-      { x: 5.5, z: 3.5, yaw: -0.46, cols: 6, scale: 0.94 },
-      { x: 14.5, z: 0.8, yaw: -0.46, cols: 6, scale: 0.94 },
-      // Drugi rząd
-      { x: 4.2, z: -2.6, yaw: -0.44, cols: 6, scale: 0.91 },
-      { x: 13.0, z: -5.3, yaw: -0.44, cols: 6, scale: 0.91 },
-      { x: 21.6, z: -8.0, yaw: -0.44, cols: 6, scale: 0.91 },
-      // Trzeci rząd
-      { x: 7.2, z: -8.8, yaw: -0.42, cols: 6, scale: 0.88 },
-      { x: 16.0, z: -11.4, yaw: -0.42, cols: 6, scale: 0.88 }
+      // Rząd 1 (frontowy / południowy w dolinie — 3 stoły w równej linii)
+      { x: -1.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
+      { x: 3.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
+      { x: 8.5, z: 6.0, yaw: -0.32, cols: 6, scale: 0.94 },
+      // Rząd 2 (tylny — 3 stoły równolegle z zachowaniem odstępu serwisowego)
+      { x: -1.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 },
+      { x: 3.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 },
+      { x: 8.5, z: 0.5, yaw: -0.32, cols: 6, scale: 0.94 }
     ];
 
     pvLayout.forEach((cfg) => {
@@ -504,8 +504,9 @@
 
     // =========================================================================
     // WIEŻA TELEKOMUNIKACYJNA BOT-3E (TRÓJKĄT RÓWNOBOCZNY, 3 STOPY, KRATOWNICA X)
+    // Usytuowana na pierwszym planie, widoczna w całości bez przeszkód
     // =========================================================================
-    const towerCoords = { x: 16.8, z: -16.5 };
+    const towerCoords = { x: 16.5, z: -7.0 };
     const towerTotalHeight = 25.5;
 
     function createBOT3ETower() {
@@ -754,8 +755,8 @@
     // =========================================================================
     // GEODETA Z TACHIMETREM PO LEWEJ STRONIE WIEŻY (POMIAR PIONOWOŚCI WIEŻY BOT-3E)
     // =========================================================================
-    // Pozycja na wzniesieniu po lewej stronie wieży, na skraju siatki widocznej w kadrze
-    const surveyorCoords = { x: 1.8, z: -15.2 };
+    // Pozycja na grzbiecie widokowym po lewej stronie, bezkolizyjna linia celowania w czubek wieży
+    const surveyorCoords = { x: 0.5, z: -14.0 };
 
     function createSurveyorStation() {
       const stationGroup = new THREE.Group();
@@ -1001,94 +1002,6 @@
     }
 
     // =========================================================================
-    // ZŁOTE PUNKTY OSNOWY GEODEZYJNEJ (3D BEACONS)
-    // =========================================================================
-    const beacons = [];
-    const beaconCoords = [
-      { x: -11, z: -5 },
-      { x: -2, z: 8 },
-      { x: 24, z: 5 },
-      { x: -16, z: 11 }
-    ];
-
-    const ringGeo = new THREE.RingGeometry(0.55, 0.82, 24);
-    ringGeo.rotateX(-Math.PI / 2);
-    const pinGeo = new THREE.CylinderGeometry(0.045, 0.045, 3.8, 8);
-
-    beaconCoords.forEach((coord) => {
-      const bGroup = new THREE.Group();
-      const ring = new THREE.Mesh(
-        ringGeo,
-        new THREE.MeshBasicMaterial({
-          color: 0xfbbf24,
-          side: THREE.DoubleSide,
-          transparent: true,
-          opacity: 0.9
-        })
-      );
-      bGroup.add(ring);
-
-      const pin = new THREE.Mesh(
-        pinGeo,
-        new THREE.MeshBasicMaterial({
-          color: 0xf59e0b,
-          transparent: true,
-          opacity: 0.65
-        })
-      );
-      pin.position.y = 1.9;
-      bGroup.add(pin);
-
-      const dot = new THREE.Mesh(
-        new THREE.SphereGeometry(0.22, 12, 12),
-        new THREE.MeshBasicMaterial({ color: 0xfffbeb })
-      );
-      dot.position.y = 3.8;
-      bGroup.add(dot);
-
-      bGroup.position.set(coord.x, 0, coord.z);
-      worldGroup.add(bGroup);
-      beacons.push({ group: bGroup, ring, x: coord.x, z: coord.z });
-    });
-
-    // =========================================================================
-    // INTERAKTYWNY KURSOR GEODEZYJNY 3D NA SIATCE (LASEROWY CELOWNIK MYSZY)
-    // =========================================================================
-    const cursorMarker = new THREE.Group();
-    const cursorOuterRing = new THREE.Mesh(
-      new THREE.RingGeometry(1.1, 1.35, 32).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: 0x38bdf8,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.9
-      })
-    );
-    const cursorInnerRing = new THREE.Mesh(
-      new THREE.RingGeometry(0.35, 0.52, 24).rotateX(-Math.PI / 2),
-      new THREE.MeshBasicMaterial({
-        color: 0xfbbf24,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.95
-      })
-    );
-    const cursorLaserBeam = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.04, 0.04, 8, 8),
-      new THREE.MeshBasicMaterial({
-        color: 0x38bdf8,
-        transparent: true,
-        opacity: 0.45
-      })
-    );
-    cursorLaserBeam.position.y = 4;
-    cursorMarker.add(cursorOuterRing, cursorInnerRing, cursorLaserBeam);
-    worldGroup.add(cursorMarker);
-
-    const cursorLight = new THREE.PointLight(0x38bdf8, 3.5, 28);
-    worldGroup.add(cursorLight);
-
-    // =========================================================================
     // OŚWIETLENIE BŁĘKITNO-ZŁOTE (BLUE-GOLD PREMIUM LIGHTING)
     // =========================================================================
     const ambientLight = new THREE.AmbientLight(0x132a52, 1.8);
@@ -1102,8 +1015,8 @@
     cyanLight.position.set(-28, 22, 18);
     scene.add(cyanLight);
 
-    const towerSpotlight = new THREE.PointLight(0xfbbf24, 3.0, 75);
-    towerSpotlight.position.set(16, 22, -10);
+    const towerSpotlight = new THREE.PointLight(0xfbbf24, 3.2, 75);
+    towerSpotlight.position.set(16.5, 22, -3);
     worldGroup.add(towerSpotlight);
 
     // =========================================================================
@@ -1228,13 +1141,6 @@
         const progress = (time * 0.48 + p.offset) % 1;
         p.mesh.position.lerpVectors(startPointVec, apexPointVec, progress);
       });
-
-      beacons.forEach((b, idx) => {
-        const by = getTerrainElevation(b.x, b.z, time);
-        b.group.position.y = by;
-        const pulse = 1 + Math.sin(time * 2.0 + idx * 1.4) * 0.22;
-        b.ring.scale.set(pulse, pulse, 1);
-      });
     }
 
     // =========================================================================
@@ -1321,8 +1227,6 @@
 
       // Statyczna pozycja świata – brak dryfu i kołysania
       worldGroup.rotation.set(0, baseYaw, 0);
-      cursorMarker.visible = false;
-      cursorLight.intensity = 0;
 
       // Obliczenie geometrii terenu, instrumentu i laserów dla ustalonego czasu
       updateSceneGeometry(STATIC_SCENE_TIME);
@@ -1338,8 +1242,8 @@
       camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
 
       // Oddalona pozycja kamery obejmująca w całości wieżę i stanowisko geodety na grzbiecie połoniny
-      camera.position.set(10.2, 20.5, 52.0);
-      cameraTarget.set(10.2, 19.5, -13.2);
+      camera.position.set(10.0, 20.0, 50.0);
+      cameraTarget.set(10.0, 19.0, -10.5);
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
 
@@ -1353,8 +1257,6 @@
     function leaveStaticMode() {
       staticMode = false;
       scene.fog.density = 0.008;
-      cursorMarker.visible = true;
-      cursorLight.intensity = 3.5;
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       renderer.setSize(cachedWidth, cachedHeight);
       camera.fov = 48;
@@ -1393,13 +1295,6 @@
       const slowDriftYaw = Math.sin(elapsedTime * 0.08) * 0.05;
       worldGroup.rotation.y = baseYaw + slowDriftYaw + currentMouseX * 0.48;
       worldGroup.rotation.x = currentMouseY * 0.22;
-
-      const cursorWorldX = currentMouseX * 22 + 6;
-      const cursorWorldZ = currentMouseY * 18 - 2;
-      const cursorWorldY = getTerrainElevation(cursorWorldX, cursorWorldZ, elapsedTime);
-      cursorMarker.position.set(cursorWorldX, cursorWorldY + 0.08, cursorWorldZ);
-      cursorOuterRing.rotation.z = elapsedTime * 0.8;
-      cursorLight.position.set(cursorWorldX, cursorWorldY + 3.5, cursorWorldZ);
 
       if (viewMode === 1) {
         camera.position.x += (9.5 + currentMouseX * 6 - camera.position.x) * 0.05;
