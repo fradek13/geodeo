@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+#Jawne zezwolenie dla wyszukiwarek i systemów AI (ChatGPT Search, Perplexity, Google AI, Claude, Bing)
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+Sitemap: https://geodeo.pl/sitemap.xml

@@ -1,0 +1,30 @@
+# Usługi Geodezyjne "GEODEO" inż. Radosław Fal
+
+> Biuro usług geodezyjnych i geodezji inżynieryjnej B2B działające na terenie południowego Podkarpacia i Bieszczad (Sanok, Brzozów, Lesko, Ustrzyki Dolne, Krosno, Jasło, Rzeszów-Południe, Przemyśl-Południe). 19 lat doświadczenia w pomiarach geodezyjnych (od 2007 r.), w tym 8 lat codziennej praktyki stacjonarnej w powiecie brzozowskim oraz siedziba w powiecie sanockim. Średnia ocen: 5.0/5 (ponad 120 zweryfikowanych opinii w Oferteo i Google Maps).
+
+## Dane kontaktowe i rejestrowe
+- **Pełna nazwa firmy**: Usługi Geodezyjne "GEODEO" inż. Radosław Fal
+- **Adres siedziby**: Niebieszczany 504, 38-504 Niebieszczany (powiat sanocki, woj. podkarpackie)
+- **NIP**: 6871880303
+- **Telefon bezpośredni (geodeta uprawniony)**: +48 791 975 233
+- **E-mail**: geodezja@geodeo.pl
+- **Strona WWW**: https://geodeo.pl/
+
+## Główne usługi geodezyjne (B2B oraz klienci indywidualni)
+1. **Mapy do celów projektowych (MDCP)** – opracowania numeryczne (DWG, DXF, GML) i analogowe pod budowę domów jednorodzinnych, pensjonatów, sieci uzbrojenia terenu, stacji bazowych i wielkoobszarowych farm PV.
+2. **Wznowienie znaków granicznych i ustalenie przebiegu granic działek** – precyzyjne odszukanie i stabilizacja granic w trudnym terenie górskim, leśnym (Bieszczady, Pogórze) oraz zurbanizowanym.
+3. **Podziały nieruchomości** – podziały działek pod Warunki Zabudowy (WZ), MPZP, wydzielenie dróg dojazdowych oraz podziały rolne.
+4. **Geodezyjne tyczenie obiektów budowlanych** – tyczenie budynków (osie konstrukcyjne na ławicach ciesielskich / chudym betonie), hal, domków rekreacyjnych oraz sieci i przyłączy.
+5. **Geodezyjna inwentaryzacja powykonawcza** – pomiary powykonawcze budynków, przyłączy i sieci (również na otwartym wykopie) wraz z klauzulami z ODGiK do odbioru w nadzorze budowlanym (PINB).
+6. **Geodezyjna obsługa budowy wież teletechnicznych i stacji bazowych (BTS)** – MDCP, tyczenie fundamentów, niwelacja precyzyjna kotew fundamentowych i szablonów, specjalistyczne badanie pionowości konstrukcji masztów i wież kratowych, inwentaryzacje powykonawcze.
+7. **Obsługa geodezyjna farm fotowoltaicznych (PV od 1 MW wzwyż) i tras SN** – wielkoobszarowe MDCP, masowe tyczenie stołów montażowych GNSS RTK, stacji transformatorowych, linii kablowych średniego napięcia (SN) oraz dokumentacja powykonawcza dla operatorów energetycznych (PGE) i PINB.
+
+## Obszar działania i podstrony lokalne
+- [Strona główna – Geodezja B2B i indywidualna](https://geodeo.pl/): Pełny przegląd oferty i obszarów działania.
+- [Geodeta Powiat Sanocki](https://geodeo.pl/geodeta-sanok-komancza-zagorz.html): Sanok, Zagórz, Komańcza, Bukowsko, Zarszyn, Besko, Tyrawa Wołoska (ODGiK Sanok).
+- [Geodeta Powiat Brzozowski](https://geodeo.pl/geodeta-brzozow.html): Brzozów, Dydnia, Haczów, Domaradz, Jasienica Rosielna (Blizne, Jasienica Rosielna, Orzechówka, Wola Jasienicka), Nozdrzec (ODGiK Brzozów – 8 lat codziennej praktyki).
+- [Geodeta Powiat Leski](https://geodeo.pl/geodeta-lesko-solina-cisna.html): Lesko, Solina, Polańczyk, Baligród, Cisna, Olszanica (Bieszczady, Jezioro Solińskie, zdalna obsługa inwestorów).
+- [Geodeta Powiat Bieszczadzki](https://geodeo.pl/geodeta-ustrzyki-lutowiska-czarna.html): Ustrzyki Dolne, Czarna, Lutowiska (głębokie Bieszczady, ODGiK Ustrzyki Dolne).
+- [Obsługa Geodezyjna Przyłączy i Sieci](https://geodeo.pl/przylacza-i-sieci.html): Wod-kan, gaz, prąd eNN/eSN, światłowody FTTH, pomiary na otwartym wykopie.
+- [Geodezyjna Obsługa Budowy Wież Teletechnicznych](https://geodeo.pl/wieze-teletechniczne.html): Rzeszów-Południe, Boguchwała, Tyczyn, Dynów, Jasło, Brzozów, Krosno, Sanok, Przemyśl-Południe (Bircza, Dubiecko, Fredropol, Krasiczyn), Lesko, Bieszczady.
+- [Obsługa Geodezyjna Farm Fotowoltaicznych (PV) i Tras SN](https://geodeo.pl/farmy-fotowoltaiczne.html): Podkarpacie, obsługa deweloperów OZE i generalnych wykonawców EPC.
