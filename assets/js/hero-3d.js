@@ -1371,13 +1371,9 @@
       }
       camera.lookAt(cameraTarget);
 
-      // Aktualizacja tekstu współrzędnych maksymalnie raz na sekundę
-      if (coordsHud && elapsedTime - lastHudUpdate > 1.0) {
-        lastHudUpdate = elapsedTime;
-        const xVal = (5492810.4 + cursorWorldX * 4.2 + Math.sin(elapsedTime * 0.2) * 1.5).toFixed(2);
-        const yVal = (7582104.8 + cursorWorldZ * 4.2 + Math.cos(elapsedTime * 0.2) * 1.5).toFixed(2);
-        const hVal = (412.6 + cursorWorldY * 8.5).toFixed(2);
-        coordsHud.textContent = `PL-2000 X: ${xVal} | Y: ${yVal} | H: ${hVal} m n.p.m.`;
+      // Współrzędne geodezyjne lokalizacji biura GEODEO (PL-2000)
+      if (coordsHud && coordsHud.textContent !== 'PL-2000 X: 5486490.47 | Y: 7582675.88 | H: 341.00 m n.p.m.') {
+        coordsHud.textContent = 'PL-2000 X: 5486490.47 | Y: 7582675.88 | H: 341.00 m n.p.m.';
       }
 
       renderer.render(scene, camera);
