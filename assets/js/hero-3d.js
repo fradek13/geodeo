@@ -33,8 +33,8 @@
       0.1,
       600
     );
-    const cameraTarget = new THREE.Vector3(16.0, 14.5, -7.0);
-    camera.position.set(12.0, 15.5, 54.0);
+    const cameraTarget = new THREE.Vector3(3.5, 14.5, -8.0);
+    camera.position.set(3.5, 15.5, 54.0);
     camera.lookAt(cameraTarget);
 
     // Smartfony (< 768px): tryb STATYCZNY – jedna ostra klatka bez pętli animacji (brak lagów)
@@ -100,25 +100,35 @@
                     Math.cos(u * 0.22 - v * 0.08) * 0.65 +
                     Math.sin(u * 0.38 + v * 0.18) * 0.25;
 
-      // 5. Stabilne wyniesienie grzbietowe pod wieżę telekomunikacyjną BOT-3E na pierwszym planie
-      const distTower = Math.sqrt((x - 16.5) * (x - 16.5) + (z + 7.0) * (z + 7.0));
-      const towerKnoll = Math.exp(-(distTower * distTower) / 36.0) * 1.8;
+      // 5. Kotwiczenie wieży na wierzchołku: wyrazista górka z wypłaszczeniem pod stopy wieży BOT-3E
+      const distTower = Math.sqrt((x - 3.5) * (x - 3.5) + (z + 8.0) * (z + 8.0));
+      const towerKnoll = Math.exp(-(distTower * distTower) / 72.0) * 4.2;
+      const towerPlateau = Math.max(0.0, 1.0 - distTower / 4.6);
 
-      // 6. Naturalne wzniesienie pod stanowisko geodety z tachimetrem
-      const distSurv = Math.sqrt((x - 0.5) * (x - 0.5) + (z + 14.0) * (z + 14.0));
-      const survKnoll = Math.exp(-(distSurv * distSurv) / 30.0) * 1.2;
+      // 6. Stanowisko geodety: wierzchołek sąsiedniej górki widokowej po lewej stronie
+      const distSurv = Math.sqrt((x + 11.5) * (x + 11.5) + (z + 9.5) * (z + 9.5));
+      const survKnoll = Math.exp(-(distSurv * distSurv) / 52.0) * 3.4;
+      const survPlateau = Math.max(0.0, 1.0 - distSurv / 3.2);
 
-      // 7. Terasa górska o łagodnym spadku pod instalację farmy PV (dwa rzędy po 3 stoły)
-      const pvDist = Math.sqrt((x - 0.0) * (x - 0.0) + (z - 4.5) * (z - 4.5));
-      const pvTerraceFactor = Math.max(0.0, 1.0 - pvDist / 16.0);
+      // 7. Wzgórze i słoneczne zbocze pod farmę PV po prawej stronie wieży
+      const distPVHill = Math.sqrt((x - 16.5) * (x - 16.5) + (z + 1.0) * (z + 1.0));
+      const pvHill = Math.exp(-(distPVHill * distPVHill) / 130.0) * 2.8;
+      const distPVSlope = Math.sqrt((x - 16.5) * (x - 16.5) + (z - 2.6) * (z - 2.6));
+      const pvTerraceFactor = Math.max(0.0, 1.0 - distPVSlope / 14.0);
 
       // 8. Płynne wygaszenie krawędzi siatki ku granicom przestrzeni
       const distCenter = Math.sqrt(x * x + z * z);
       const edgeFade = Math.max(0.0, 1.0 - Math.pow(distCenter / 72.0, 3.5));
 
-      let baseElev = (rMain + rFront + rBack + folds + towerKnoll + survKnoll) * edgeFade - 2.6;
-      baseElev = baseElev * (1.0 - pvTerraceFactor * 0.22);
-      const waveFactor = edgeFade * (1.0 - pvTerraceFactor * 0.7);
+      let baseElev = (rMain + rFront + rBack + folds + towerKnoll + survKnoll + pvHill) * edgeFade - 2.8;
+      baseElev = baseElev * (1.0 - pvTerraceFactor * 0.18);
+      if (distTower < 4.6) {
+        baseElev += towerPlateau * 0.45;
+      }
+      if (distSurv < 3.2) {
+        baseElev += survPlateau * 0.35;
+      }
+      const waveFactor = edgeFade * (1.0 - pvTerraceFactor * 0.65);
 
       return {
         factor: waveFactor,
@@ -240,12 +250,16 @@
       metalness: 0.5,
       roughness: 0.3
     });
-    const pvCellMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0a2547,
-      emissive: 0x061b3a,
+    // Materiał modułów fotowoltaicznych z realistycznym szkłem hartowanym i dynamicznym refleksem słonecznym
+    const pvCellMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0x071b38,
+      emissive: 0x061e3d,
       emissiveIntensity: 0.65,
-      metalness: 0.85,
-      roughness: 0.18
+      roughness: 0.12,
+      metalness: 0.88,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.04,
+      reflectivity: 1.0
     });
     const pvFrameEdgeMaterial = new THREE.LineBasicMaterial({
       color: 0x38bdf8,
@@ -260,24 +274,23 @@
 
     /**
      * Buduje pojedynczy, dwupodporowy stół fotowoltaiczny (konstrukcja kafarowana):
-     * - 4 pary solidnych nóg o przekroju dwuteowym/ceowym (przednie krótsze, tylne dłuższe)
-     * - Każda noga trafia idealnie w węzeł pod ukośną krokwią (z uwzględnieniem cos/sin kąta 28°)
-     * - Głowice montażowe u szczytu nóg, stopy podporowe na gruncie oraz ukośne zastrzały stężające
+     * - Zwiększony rozmiar modułów (5 kolumn x 2 rzędy modułów portrait)
+     * - Solidne ramy nośne ze słupami kafarowanymi głęboko w grunt (brak wiszenia nóg na stoku)
+     * - Zmniejszone o 50% dylatacje między modułami dla zwartego, inżynieryjnego wyglądu
      * - Krokwie poprzeczne oraz 4 podłużne szyny nośne wystające poza obrys modułów
-     * - Moduły PV z wyraźnymi dylatacjami (przerwami)
      */
-    function createDetailedPVTable(cols = 6, rows = 2) {
+    function createDetailedPVTable(cols = 5, rows = 2) {
       const tableGroup = new THREE.Group();
 
-      const modW = 1.02;
-      const modH = 1.68;
+      const modW = 1.06;
+      const modH = 1.72;
       const modThick = 0.055;
-      const gapX = 0.16; // Dylatacja pionowa między modułami
-      const gapZ = 0.20; // Dylatacja pozioma między rzędami modułów
+      const gapX = 0.10; // Zmniejszone przerwy dylatacyjne między modułami
+      const gapZ = 0.14;
 
       const totalModulesWidth = cols * modW + (cols - 1) * gapX;
       const totalSlopeLength = rows * modH + (rows - 1) * gapZ;
-      const railLength = totalModulesWidth + 0.65;
+      const railLength = totalModulesWidth + 0.45;
 
       // Kąt nachylenia stołu PV (28 stopni)
       const tiltAngle = 28 * (Math.PI / 180);
@@ -285,7 +298,7 @@
       const sinA = Math.sin(tiltAngle);
 
       // Wysokość środka stołu nad poziomem terenu
-      const centerHeight = 1.72;
+      const centerHeight = 1.76;
 
       // Pozycja krokwi w układzie lokalnym pochylonego stołu
       const rafterLocalY = -0.07;
@@ -303,8 +316,8 @@
       const backTopY = centerHeight + attachLocalY * cosA - sBack * sinA;
       const backZ = attachLocalY * sinA + sBack * cosA;
 
-      // Część podziemna (kafarowana w głąb gruntu) i naziemna nóg
-      const pileEmbed = -0.45;
+      // Część podziemna (kafarowana solidnie w głąb gruntu – brak wiszenia nóg na zboczu)
+      const pileEmbed = -0.75;
 
       // 1. CZTERY LUB TRZY RAMY PODPOROWE (W ZALEŻNOŚCI OD DŁUGOŚCI STOŁU)
       const numSupports = Math.max(3, Math.min(4, Math.round(cols * 0.75)));
@@ -479,19 +492,20 @@
     }
 
     // Rozmieszczenie stołów PV w układzie rzeczywistej farmy fotowoltaicznej:
-    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów), czyste równoległe rzędy z bezpiecznymi odstępami technologicznymi:
-    // Rząd 1 (bliżej przodu): x: [-6.0, 0.0, 6.0], z: [8.0]
-    // Rząd 2 (z tyłu): x: [-6.0, 0.0, 6.0], z: [1.0]
+    // Dokładnie 2 rzędy po 3 stoły (łącznie 6 stołów) na słonecznym zboczu po prawej stronie wieży.
+    // Zwiększony rozmiar stołów (5 kolumn modułów) ze zwartymi odstępami (zmniejszonymi o 50%):
+    // Rząd 1 (frontowy / dolny na zboczu po prawej stronie wieży): z: 5.2
+    // Rząd 2 (tylny / górny na zboczu po prawej stronie wieży): z: 0.0
     const pvTablesList = [];
     const pvLayout = [
-      // Rząd 1 (bliżej przodu, z = 8.0)
-      { x: -6.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
-      { x:  0.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
-      { x:  6.0, z: 8.0, yaw: 0.0, cols: 4, scale: 0.90 },
-      // Rząd 2 (z tyłu, z = 1.0)
-      { x: -6.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 },
-      { x:  0.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 },
-      { x:  6.0, z: 1.0, yaw: 0.0, cols: 4, scale: 0.90 }
+      // Rząd 1 (frontowy / dolny na zboczu po prawej stronie wieży)
+      { x:  9.9, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 16.5, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 23.1, z: 5.2, yaw: 0.0, cols: 5, scale: 0.95 },
+      // Rząd 2 (tylny / górny na zboczu po prawej stronie wieży)
+      { x:  9.9, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 16.5, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 },
+      { x: 23.1, z: 0.0, yaw: 0.0, cols: 5, scale: 0.95 }
     ];
 
     pvLayout.forEach((cfg) => {
@@ -505,9 +519,9 @@
 
     // =========================================================================
     // WIEŻA TELEKOMUNIKACYJNA BOT-3E (TRÓJKĄT RÓWNOBOCZNY, 3 STOPY, KRATOWNICA X)
-    // Usytuowana na pierwszym planie, widoczna w całości bez przeszkód
+    // Usytuowana centralnie na wierzchołku głównego szczytu bieszczadzkiego
     // =========================================================================
-    const towerCoords = { x: 16.5, z: -7.0 };
+    const towerCoords = { x: 3.5, z: -8.0 };
     const towerTotalHeight = 25.5;
 
     function createBOT3ETower() {
@@ -547,7 +561,7 @@
         return new THREE.Vector3(Math.cos(angle) * r, y, Math.sin(angle) * r);
       }
 
-      // 1. TRZY ŻELBETOWE STOPY FUNDAMENTOWE
+      // 1. TRZY ŻELBETOWE STOPY FUNDAMENTOWE (Z GŁĘBOKIMI PALAMI PODZIEMNYMI W GŁĄB WIERZCHOŁKA)
       const concreteMat = new THREE.MeshStandardMaterial({
         color: 0x475569,
         roughness: 0.7,
@@ -559,16 +573,17 @@
         opacity: 0.9
       });
 
-      const padBottomGeo = new THREE.BoxGeometry(1.35, 0.65, 1.35);
+      const pierDepth = 3.6;
+      const padBottomGeo = new THREE.BoxGeometry(1.5, pierDepth, 1.5);
       const padBottomEdges = new THREE.EdgesGeometry(padBottomGeo);
-      const pedestalGeo = new THREE.BoxGeometry(0.72, 1.0, 0.72);
+      const pedestalGeo = new THREE.BoxGeometry(0.76, 1.1, 0.76);
       const pedestalEdges = new THREE.EdgesGeometry(pedestalGeo);
 
       for (let l = 0; l < 3; l++) {
         const baseCorner = getCornerPos(0, l);
 
         const padBottom = new THREE.Mesh(padBottomGeo, concreteMat);
-        padBottom.position.set(baseCorner.x, 0.0, baseCorner.z);
+        padBottom.position.set(baseCorner.x, -pierDepth * 0.5 + 0.2, baseCorner.z);
         towerGroup.add(padBottom);
 
         const padWire = new THREE.LineSegments(padBottomEdges, concreteEdgeMat);
@@ -754,10 +769,10 @@
     worldGroup.add(bot3e.group);
 
     // =========================================================================
-    // GEODETA Z TACHIMETREM PO LEWEJ STRONIE WIEŻY (POMIAR PIONOWOŚCI WIEŻY BOT-3E)
+    // GEODETA Z TACHIMETREM NA WIERZCHOŁKU SĄSIEDNIEJ GÓRKI (POMIAR PIONOWOŚCI)
     // =========================================================================
-    // Pozycja na grzbiecie widokowym po lewej stronie, bezkolizyjna linia celowania w czubek wieży
-    const surveyorCoords = { x: 0.5, z: -14.0 };
+    // Naturalna kompozycja krajobrazowa na sąsiednim wierzchołku po lewej stronie wieży
+    const surveyorCoords = { x: -11.5, z: -9.5 };
 
     function createSurveyorStation() {
       const stationGroup = new THREE.Group();
@@ -802,7 +817,7 @@
         const angle = (i * 120 + 15) * (Math.PI / 180);
         const footPos = new THREE.Vector3(
           Math.cos(angle) * tripodSpreadRadius,
-          -0.15,
+          -0.35,
           Math.sin(angle) * tripodSpreadRadius
         );
         const headEdgePos = new THREE.Vector3(
@@ -1017,7 +1032,7 @@
     scene.add(cyanLight);
 
     const towerSpotlight = new THREE.PointLight(0xfbbf24, 3.2, 75);
-    towerSpotlight.position.set(16.5, 22, -3);
+    towerSpotlight.position.set(3.5, 22, -4);
     worldGroup.add(towerSpotlight);
 
     // =========================================================================
@@ -1142,6 +1157,28 @@
         const progress = (time * 0.48 + p.offset) % 1;
         p.mesh.position.lerpVectors(startPointVec, apexPointVec, progress);
       });
+
+      // 5. Dynamiczny efekt refleksów świetlnych (błysków słońca / specular gloss flare) na powierzchni paneli PV:
+      // Płynnie reaguje na kąt obrotu, skręcenie i pozycję kamery w scenie 3D
+      const sunDir = new THREE.Vector3(35, 45, 24).normalize();
+      const panelNorm = new THREE.Vector3(0, Math.cos(28 * Math.PI / 180), Math.sin(28 * Math.PI / 180)).normalize();
+      const nDotL = panelNorm.dot(sunDir);
+      const reflDir = panelNorm.clone().multiplyScalar(2 * nDotL).sub(sunDir).normalize();
+
+      const camDirPV = camera.position.clone().sub(new THREE.Vector3(16.5, 2.5, 2.5)).normalize();
+      const specAlignment = Math.max(0, reflDir.dot(camDirPV));
+      const specularGlint = Math.pow(specAlignment, 6.0);
+
+      const shimmer = Math.sin(time * 2.5) * 0.08 + 0.92;
+      const flareBoost = specularGlint * 2.6 * shimmer;
+
+      pvCellMaterial.emissive.setRGB(
+        0.03 + flareBoost * 0.95,
+        0.09 + flareBoost * 0.78,
+        0.18 + flareBoost * 0.42
+      );
+      pvCellMaterial.emissiveIntensity = 0.55 + flareBoost * 1.5;
+      pvCellMaterial.roughness = Math.max(0.04, 0.14 - flareBoost * 0.08);
     }
 
     // =========================================================================
@@ -1243,8 +1280,8 @@
       camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
 
       // Oddalona pozycja kamery obejmująca w całości wieżę i stanowisko geodety na grzbiecie połoniny
-      camera.position.set(12.0, 16.0, 58.0);
-      cameraTarget.set(15.0, 15.0, -7.0);
+      camera.position.set(3.5, 16.5, 62.0);
+      cameraTarget.set(3.5, 15.0, -8.0);
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
 
@@ -1261,8 +1298,8 @@
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
       renderer.setSize(cachedWidth, cachedHeight);
       camera.fov = 48;
-      camera.position.set(12.0, 15.5, 54.0);
-      cameraTarget.set(16.0, 14.5, -7.0);
+      camera.position.set(3.5, 15.5, 54.0);
+      cameraTarget.set(3.5, 14.5, -8.0);
       camera.aspect = cachedWidth / cachedHeight;
       camera.lookAt(cameraTarget);
       camera.updateProjectionMatrix();
@@ -1298,16 +1335,16 @@
       worldGroup.rotation.x = currentMouseY * 0.22;
 
       if (viewMode === 1) {
-        camera.position.x += (13.5 + currentMouseX * 5 - camera.position.x) * 0.05;
+        camera.position.x += (5.0 + currentMouseX * 5 - camera.position.x) * 0.05;
         camera.position.y += (14.5 - currentMouseY * 3.0 - camera.position.y) * 0.05;
         camera.position.z += (34.0 - camera.position.z) * 0.05;
-        targetLookVec.set(16.0, 14.5, -7.0);
+        targetLookVec.set(3.5, 14.5, -8.0);
         cameraTarget.lerp(targetLookVec, 0.05);
       } else {
-        camera.position.x += (12.0 + currentMouseX * 7.5 - camera.position.x) * 0.06;
+        camera.position.x += (3.5 + currentMouseX * 7.5 - camera.position.x) * 0.06;
         camera.position.y += (15.5 - currentMouseY * 4.0 - camera.position.y) * 0.06;
         camera.position.z += (54.0 - camera.position.z) * 0.06;
-        targetLookVec.set(16.0 + currentMouseX * 3, 14.5 - currentMouseY * 2.0, -7.0);
+        targetLookVec.set(3.5 + currentMouseX * 3, 14.5 - currentMouseY * 2.0, -8.0);
         cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
