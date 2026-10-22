@@ -26,25 +26,30 @@
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x050914, 0.008);
 
-    // 2. Kamera perspektywiczna
+    // 2. Kamera perspektywiczna (domyślny kadr desktopowy)
     const camera = new THREE.PerspectiveCamera(
       48,
       cachedWidth / cachedHeight,
       0.1,
       600
     );
-    camera.position.set(isMobileViewport ? 7.5 : 2, 18.5, isMobileViewport ? 50 : 42);
-    const cameraTarget = new THREE.Vector3(isMobileViewport ? 9.5 : 4.5, 2.0, -6.5);
+    const cameraTarget = new THREE.Vector3(4.5, 2.0, -6.5);
+    camera.position.set(2.0, 18.5, 41.0);
     camera.lookAt(cameraTarget);
 
-    // 3. Renderer WebGL (zoptymalizowany pod kątem GPU smartfonów)
+    // Smartfony (< 768px): tryb STATYCZNY – jedna ostra klatka bez pętli animacji (brak lagów)
+    let staticMode = isMobileViewport;
+
+    // 3. Renderer WebGL
+    // Antyaliasing włączony zawsze – w trybie statycznym koszt jest jednorazowy, a linie siatki pozostają ostre
     const renderer = new THREE.WebGLRenderer({
-      antialias: !isMobileViewport,
+      antialias: true,
       alpha: false,
       powerPreference: 'high-performance'
     });
     renderer.setSize(cachedWidth, cachedHeight);
-    renderer.setPixelRatio(isMobileViewport ? 1 : Math.min(window.devicePixelRatio, 1.5));
+    // Mobile: pełna gęstość pikseli ekranu (do 2x) = ostra siatka bez rozmycia; desktop bez zmian
+    renderer.setPixelRatio(staticMode ? Math.min(window.devicePixelRatio || 1, 2) : Math.min(window.devicePixelRatio, 1.5));
     renderer.setClearColor(0x050914, 1);
 
     container.innerHTML = '';
@@ -95,8 +100,9 @@
     // =========================================================================
     const width = 145;
     const depth = 145;
-    const segmentsX = isMobileViewport ? 48 : 88;
-    const segmentsY = isMobileViewport ? 48 : 88;
+    // Ta sama gęstość siatki na mobile i desktop (na mobile liczona tylko raz – tryb statyczny)
+    const segmentsX = 88;
+    const segmentsY = 88;
 
     const geometry = new THREE.PlaneGeometry(width, depth, segmentsX, segmentsY);
     geometry.rotateX(-Math.PI / 2);
@@ -1100,7 +1106,7 @@
 
       positions.needsUpdate = true;
       colorAttr.needsUpdate = true;
-      if (frameCounter === 0 || (!isMobileViewport && frameCounter % 4 === 0)) {
+      if (staticMode || frameCounter === 0 || frameCounter % 4 === 0) {
         geometry.computeVertexNormals();
       }
       frameCounter++;
@@ -1226,6 +1232,10 @@
           solidMesh.visible = false;
           modeBtn.textContent = 'Tryb 3D: Siatka CAD Wireframe';
         }
+        // Smartfon: po zmianie trybu odrysowujemy jedną statyczną klatkę
+        if (staticMode) {
+          renderStaticMobileFrame();
+        }
       });
     }
 
@@ -1246,14 +1256,87 @@
       observer.observe(heroSection);
     }
 
+    // =========================================================================
+    // SMARTFONY (< 768px): STATYCZNY, OSTRY KADR (ODDALENIE + CAŁA WIEŻA I GEODETA)
+    // - Wyłączenie pętli animacji i paralaksy (0% lagów / brak obciążenia GPU)
+    // - Precyzyjny kadr z dynamiczną blokadą kąta hFOV: cała wieża teletechniczna
+    //   BOT-3E (od stóp fundamentu po szpic iglicy, anteny i czerwone światło) oraz
+    //   geodeta celujący tachimetrem mieszczą się w całości w kadrze bez ucinania krawędzi.
+    // - Renderowanie w natywnej gęstości pikseli (do 2x Retina) z antyaliasingiem
+    // =========================================================================
+    const STATIC_SCENE_TIME = 6.0;
+
+    function renderStaticMobileFrame() {
+      cachedWidth = container.clientWidth || window.innerWidth;
+      cachedHeight = container.clientHeight || 560;
+
+      // Pełna gęstość pikseli (Retina / OLED do 2x) = idealnie ostre linie siatki bez lagów
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(cachedWidth, cachedHeight);
+
+      // Statyczna pozycja świata – brak dryfu i kołysania
+      worldGroup.rotation.set(0, baseYaw, 0);
+      cursorMarker.visible = false;
+      cursorLight.intensity = 0;
+
+      // Obliczenie geometrii terenu, instrumentu i laserów dla ustalonego czasu
+      updateSceneGeometry(STATIC_SCENE_TIME);
+      worldGroup.updateMatrixWorld(true);
+
+      const aspect = cachedWidth / cachedHeight;
+      camera.aspect = aspect;
+
+      // Dynamiczne dopasowanie FOV z blokadą hFOV:
+      // Zapobiega sztucznemu powiększeniu i ucięciu boków na wąskich ekranach smartfonów
+      const targetHalfHFov = Math.atan(Math.tan((56.0 * Math.PI / 180.0) / 2.0) * 0.45);
+      const clampedAsp = Math.min(aspect, 0.55);
+      camera.fov = Math.max(48.0, Math.min(72.0, 2.0 * Math.atan(Math.tan(targetHalfHFov) / clampedAsp) * (180.0 / Math.PI)));
+
+      // Oddalona pozycja kamery obejmująca w całości całą wieżę i stanowisko geodety
+      camera.position.set(10.2, 18.0, 52.0);
+      cameraTarget.set(10.2, 16.5, -13.2);
+      camera.lookAt(cameraTarget);
+      camera.updateProjectionMatrix();
+
+      // Przejrzysta mgła przestrzenna zapewniająca wysoki kontrast i głębię
+      scene.fog.density = 0.0055;
+      bot3e.targetReticleGroup.lookAt(camera.position);
+
+      renderer.render(scene, camera);
+    }
+
+    function leaveStaticMode() {
+      staticMode = false;
+      scene.fog.density = 0.008;
+      cursorMarker.visible = true;
+      cursorLight.intensity = 3.5;
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      renderer.setSize(cachedWidth, cachedHeight);
+      camera.fov = 48;
+      camera.position.set(2.0, 18.5, 41.0);
+      cameraTarget.set(4.5, 2.0, -6.5);
+      camera.aspect = cachedWidth / cachedHeight;
+      camera.lookAt(cameraTarget);
+      camera.updateProjectionMatrix();
+      if (!loopRunning) {
+        loopRunning = true;
+        requestAnimationFrame(animate);
+      }
+    }
+
+    // =========================================================================
+    // DESKTOP / TABLET: PŁYNNA ANIMACJA (BEZ ZMIAN)
+    // =========================================================================
+    let loopRunning = false;
+
     function animate(now) {
+      if (staticMode) {
+        loopRunning = false;
+        return;
+      }
       requestAnimationFrame(animate);
 
       if (!isHeroVisible || document.hidden) return;
-
-      // Na urządzeniach mobilnych ograniczamy odświeżanie WebGL do ~28 FPS, uwalniając wątek główny dla 60/120Hz skrolowania
-      if (isMobileViewport && now - lastFrameTime < 34) return;
-      lastFrameTime = now;
 
       const elapsedTime = clock.getElapsedTime();
 
@@ -1274,27 +1357,22 @@
       cursorLight.position.set(cursorWorldX, cursorWorldY + 3.5, cursorWorldZ);
 
       if (viewMode === 1) {
-        const zoomZ = isMobileViewport ? 27.0 : 19.0;
-        const zoomTargetX = isMobileViewport ? 11.5 : 11.0;
         camera.position.x += (9.5 + currentMouseX * 6 - camera.position.x) * 0.05;
         camera.position.y += (11.5 - currentMouseY * 3.5 - camera.position.y) * 0.05;
-        camera.position.z += (zoomZ - camera.position.z) * 0.05;
-        targetLookVec.set(zoomTargetX, 3.8, -10.5);
+        camera.position.z += (19.0 - camera.position.z) * 0.05;
+        targetLookVec.set(11.0, 3.8, -10.5);
         cameraTarget.lerp(targetLookVec, 0.05);
       } else {
-        const baseCamX = isMobileViewport ? 7.5 : 2.0;
-        const baseCamZ = isMobileViewport ? 50.0 : 41.0;
-        const baseLookX = isMobileViewport ? 9.5 : 4.5;
-        camera.position.x += (baseCamX + currentMouseX * 8.5 - camera.position.x) * 0.06;
+        camera.position.x += (2.0 + currentMouseX * 8.5 - camera.position.x) * 0.06;
         camera.position.y += (18.5 - currentMouseY * 5.0 - camera.position.y) * 0.06;
-        camera.position.z += (baseCamZ - camera.position.z) * 0.06;
-        targetLookVec.set(baseLookX + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5);
+        camera.position.z += (41.0 - camera.position.z) * 0.06;
+        targetLookVec.set(4.5 + currentMouseX * 3, 2.0 - currentMouseY * 1.5, -6.5);
         cameraTarget.lerp(targetLookVec, 0.06);
       }
       camera.lookAt(cameraTarget);
 
-      // Aktualizacja tekstu współrzędnych maksymalnie raz na sekundę i tylko na desktopie (eliminacja layout thrashing na mobile)
-      if (!isMobileViewport && coordsHud && elapsedTime - lastHudUpdate > 1.0) {
+      // Aktualizacja tekstu współrzędnych maksymalnie raz na sekundę
+      if (coordsHud && elapsedTime - lastHudUpdate > 1.0) {
         lastHudUpdate = elapsedTime;
         const xVal = (5492810.4 + cursorWorldX * 4.2 + Math.sin(elapsedTime * 0.2) * 1.5).toFixed(2);
         const yVal = (7582104.8 + cursorWorldZ * 4.2 + Math.cos(elapsedTime * 0.2) * 1.5).toFixed(2);
@@ -1305,9 +1383,21 @@
       renderer.render(scene, camera);
     }
 
-    requestAnimationFrame(animate);
+    if (staticMode) {
+      // Dwie klatki opóźnienia = gotowy układ strony; ponowny kadr po wczytaniu fontów i obrazów
+      requestAnimationFrame(() => requestAnimationFrame(renderStaticMobileFrame));
+      window.addEventListener('load', () => { if (staticMode) renderStaticMobileFrame(); });
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(() => { if (staticMode) renderStaticMobileFrame(); });
+      }
+    } else {
+      loopRunning = true;
+      requestAnimationFrame(animate);
+    }
 
     let resizeTimer;
+    let lastStaticW = 0;
+    let lastStaticH = 0;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
@@ -1315,11 +1405,28 @@
         cachedWidth = container.clientWidth || window.innerWidth;
         cachedHeight = container.clientHeight || 560;
         isMobileViewport = cachedWidth < 768;
+
+        if (isMobileViewport) {
+          staticMode = true;
+          // Pasek adresu przeglądarki mobilnej wywołuje resize przy skrolowaniu – odrysowujemy tylko przy realnej zmianie wymiarów (np. obrót ekranu)
+          if (cachedWidth !== lastStaticW || Math.abs(cachedHeight - lastStaticH) > 80) {
+            lastStaticW = cachedWidth;
+            lastStaticH = cachedHeight;
+            renderStaticMobileFrame();
+          }
+          return;
+        }
+
+        if (staticMode) {
+          leaveStaticMode();
+          return;
+        }
+
         camera.aspect = cachedWidth / cachedHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(cachedWidth, cachedHeight);
-        renderer.setPixelRatio(isMobileViewport ? 1 : Math.min(window.devicePixelRatio, 1.5));
-      }, 120);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+      }, 150);
     }, { passive: true });
   }
 

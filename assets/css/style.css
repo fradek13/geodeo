@@ -1992,6 +1992,43 @@ button, input, select, textarea, label {
   }
 }
 
+/* --------------------------------------------------------------------------
+   SMARTFONY (< 768px): STATYCZNA, OSTRA GRAFIKA 3D + PEŁNY KADR WIEŻY I GEODETY
+   Desktop i tablety pozostają bez zmian.
+   -------------------------------------------------------------------------- */
+@media (max-width: 47.99rem) {
+  /* Brak jakichkolwiek ruchomych efektów w sekcji Hero (animacje, paralaksa, przejścia) */
+  .hero-3d-wrapper,
+  .hero-3d-wrapper * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Płótno WebGL renderowane 1:1 w natywnej gęstości ekranu – bez skalowania i rozmycia */
+  #hero-3d-canvas-container,
+  #hero-3d-canvas-container canvas {
+    transform: none;
+    filter: none;
+    image-rendering: auto;
+  }
+
+  /* Zrównoważona winieta na smartfonach: czytelny tekst u góry i pełna wyrazistość siatki 3D, wieży i geodety */
+  .hero-3d-vignette {
+    background: linear-gradient(
+      180deg,
+      rgba(5, 9, 20, 0.78) 0%,
+      rgba(5, 9, 20, 0.52) 36%,
+      rgba(5, 9, 20, 0.22) 65%,
+      rgba(5, 9, 20, 0.65) 100%
+    );
+  }
+
+  /* Elastyczny podgląd 3D na smartfonach */
+  .hero-glass-showcase {
+    min-height: clamp(14rem, 60vw, 20rem);
+  }
+}
+
 .hero-3d-content-layer {
   position: relative;
   z-index: 3;
